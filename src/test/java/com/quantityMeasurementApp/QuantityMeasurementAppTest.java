@@ -1,8 +1,7 @@
-package com.UC1_FeetEquality;
+package com.quantityMeasurementApp;
 
 import org.junit.jupiter.api.Test;
-import com.UC1_FeetEquality.QuantityMeasurementApp.Feet;
-import static org.junit.jupiter.api.Assertions.*;
+import com.quantityMeasurementApp.QuantityMeasurementApp.Feet;
 
 public class QuantityMeasurementAppTest {
 

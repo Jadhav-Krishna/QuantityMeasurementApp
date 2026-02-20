@@ -1,4 +1,4 @@
-package com.UC1_FeetEquality;
+package com.quantityMeasurementApp;
 
 public class QuantityMeasurementApp {
 
