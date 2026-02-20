@@ -1,4 +1,4 @@
-package com.UC2_InchEquality;
+package com.quantityMeasurementApp;
 
 public class Inches {
 
