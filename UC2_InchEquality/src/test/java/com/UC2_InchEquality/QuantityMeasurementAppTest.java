@@ -2,7 +2,6 @@ package com.UC2_InchEquality;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-import com.UC2_InchEquality.QuantityMeasurementApp.Inches;
 
 public class QuantityMeasurementAppTest {
 
