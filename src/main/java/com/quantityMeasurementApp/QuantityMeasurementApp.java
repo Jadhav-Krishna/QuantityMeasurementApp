@@ -27,6 +27,15 @@ public class QuantityMeasurementApp {
 		return result;
 	}
 
+	public static Length demonstrateLengthConversion(Length length, Length.LengthUnit toUnit) {
+
+		Length result = length.convertTo(toUnit);
+
+		System.out.println(length + " = " + result);
+
+		return result;
+	}
+
 	public static void main(String[] args) {
 
 		demonstrateLengthComparison(1.0, Length.LengthUnit.FEET, 12.0, Length.LengthUnit.INCHES);
@@ -44,5 +53,11 @@ public class QuantityMeasurementApp {
 		demonstrateLengthConversion(3.0, Length.LengthUnit.YARDS, Length.LengthUnit.FEET);
 
 		demonstrateLengthConversion(2.54, Length.LengthUnit.CENTIMETERS, Length.LengthUnit.INCHES);
+
+		Length lengthInYards = new Length(2.0, Length.LengthUnit.YARDS);
+		demonstrateLengthConversion(lengthInYards, Length.LengthUnit.INCHES);
+
+		Length lengthInFeet = new Length(3.0, Length.LengthUnit.FEET);
+		demonstrateLengthConversion(lengthInFeet, Length.LengthUnit.YARDS);
 	}
 }
