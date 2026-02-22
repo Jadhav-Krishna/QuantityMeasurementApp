@@ -9,81 +9,108 @@ public class Length {
 
 	public enum LengthUnit {
 
-		FEET(1.0), INCHES(1.0 / 12.0), YARDS(3.0), CENTIMETERS(0.0328084);
+		FEET(12.0), INCHES(1.0), YARDS(36.0), CENTIMETERS(0.393701);
 
-		private final double toFeetFactor;
+		private final double conversionFactor;
 
-		LengthUnit(double toFeetFactor) {
-			this.toFeetFactor = toFeetFactor;
+		LengthUnit(double conversionFactor) {
+			this.conversionFactor = conversionFactor;
 		}
 
-		public double toFeet(double value) {
-			return value * toFeetFactor;
+		public double getConversionFactor() {
+			return conversionFactor;
 		}
 	}
 
 	public Length(double value, LengthUnit unit) {
+		if (!Double.isFinite(value)) {
+			throw new IllegalArgumentException("Value must be a finite number");
+		}
 		if (unit == null) {
-			throw new IllegalArgumentException("Unit cannot be null");
+			throw new IllegalArgumentException("Unit must not be null");
 		}
 		this.value = value;
 		this.unit = unit;
 	}
 
-	private double toBaseUnit() {
-		return unit.toFeet(value);
+	private double convertToBaseUnit() {
+		double valueInInches = value * unit.getConversionFactor();
+		return Math.round(valueInInches * 100.0) / 100.0;
+	}
+
+	private boolean compare(Length thatLength) {
+		return Double.compare(this.convertToBaseUnit(), thatLength.convertToBaseUnit()) == 0;
+	}
+
+	private double convertFromBaseToTargetUnit(double lengthInInches, LengthUnit targetUnit) {
+		double convertedValue = lengthInInches / targetUnit.getConversionFactor();
+		return Math.round(convertedValue * 100.0) / 100.0;
+	}
+
+	public Length convertTo(LengthUnit targetUnit) {
+		if (targetUnit == null) {
+			throw new IllegalArgumentException("Target unit must not be null");
+		}
+
+		double valueInInches = this.convertToBaseUnit();
+		double roundedValue = convertFromBaseToTargetUnit(valueInInches, targetUnit);
+
+		return new Length(roundedValue, targetUnit);
 	}
 
 	public static double convert(double value, LengthUnit source, LengthUnit target) {
 
 		if (!Double.isFinite(value)) {
-			throw new IllegalArgumentException("Value is finite");
+			throw new IllegalArgumentException("Value must be a finite number");
 		}
 
 		if (source == null || target == null) {
-			throw new IllegalArgumentException("not null unit");
+			throw new IllegalArgumentException("Source and target units must not be null");
 		}
 
-		double valueInFeet = source.toFeet(value);
+		double valueInInches = value * source.getConversionFactor();
+		double result = valueInInches / target.getConversionFactor();
 
-		double result = valueInFeet / target.toFeet(1.0);
-
-		return result;
+		return Math.round(result * 100.0) / 100.0;
 	}
 
-	public Length add(Length other) {
+	public Length add(Length thatLength) {
 
-		if (other == null) {
-			throw new IllegalArgumentException("Length cannot be null");
+		if (thatLength == null) {
+			throw new IllegalArgumentException("Length to add must not be null");
 		}
 
-		double thisFeet = this.toBaseUnit();
-		double otherFeet = other.toBaseUnit();
+		double thisInches = this.convertToBaseUnit();
+		double thatInches = thatLength.convertToBaseUnit();
 
-		double sumFeet = thisFeet + otherFeet;
+		double sumInches = thisInches + thatInches;
 
-		double resultValue = sumFeet / this.unit.toFeet(1.0);
+		double resultValue = convertFromBaseToTargetUnit(sumInches, this.unit);
 
 		return new Length(resultValue, this.unit);
 	}
 
 	@Override
-	public boolean equals(Object obj) {
+	public boolean equals(Object o) {
 
-		if (this == obj)
+		if (this == o)
 			return true;
-		if (obj == null)
+		if (o == null)
 			return false;
-		if (getClass() != obj.getClass())
+		if (getClass() != o.getClass())
 			return false;
 
-		Length other = (Length) obj;
-
-		return Double.compare(this.toBaseUnit(), other.toBaseUnit()) == 0;
+		Length other = (Length) o;
+		return compare(other);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(toBaseUnit());
+		return Objects.hash(convertToBaseUnit());
+	}
+
+	@Override
+	public String toString() {
+		return String.format("%.2f %s", value, unit);
 	}
 }
