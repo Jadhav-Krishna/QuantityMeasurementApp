@@ -9,16 +9,16 @@ public class Length {
 
 	public enum LengthUnit {
 
-		FEET(1.0), INCHES(1.0 / 12.0), YARDS(3.0), CENTIMETERS(0.0328084);
+		FEET(12.0), INCHES(1.0), YARDS(36.0), CENTIMETERS(0.393701);
 
-		private final double toFeetFactor;
+		private final double toInchesFactor;
 
-		LengthUnit(double toFeetFactor) {
-			this.toFeetFactor = toFeetFactor;
+		LengthUnit(double toInchesFactor) {
+			this.toInchesFactor = toInchesFactor;
 		}
 
-		public double toFeet(double value) {
-			return value * toFeetFactor;
+		public double toInches(double value) {
+			return value * toInchesFactor;
 		}
 	}
 
@@ -31,7 +31,8 @@ public class Length {
 	}
 
 	private double toBaseUnit() {
-		return unit.toFeet(value);
+		double valueInInches = unit.toInches(value);
+		return Math.round(valueInInches * 100.0) / 100.0;
 	}
 
 	public static double convert(double value, LengthUnit source, LengthUnit target) {
@@ -44,11 +45,11 @@ public class Length {
 			throw new IllegalArgumentException("not null unit");
 		}
 
-		double valueInFeet = source.toFeet(value);
+		double valueInInches = source.toInches(value);
 
-		double result = valueInFeet / target.toFeet(1.0);
+		double result = valueInInches / target.toInches(1.0);
 
-		return result;
+		return Math.round(result * 100.0) / 100.0;
 	}
 
 	public Length add(Length other) {
@@ -57,12 +58,12 @@ public class Length {
 			throw new IllegalArgumentException("Length cannot be null");
 		}
 
-		double thisFeet = this.toBaseUnit();
-		double otherFeet = other.toBaseUnit();
+		double thisInches = this.toBaseUnit();
+		double otherInches = other.toBaseUnit();
 
-		double sumFeet = thisFeet + otherFeet;
+		double sumInches = thisInches + otherInches;
 
-		double resultValue = sumFeet / this.unit.toFeet(1.0);
+		double resultValue = sumInches / this.unit.toInches(1.0);
 
 		return new Length(resultValue, this.unit);
 	}
@@ -81,12 +82,12 @@ public class Length {
 			throw new IllegalArgumentException("finite value only");
 		}
 
-		double thisFeet = this.toBaseUnit();
-		double otherFeet = other.toBaseUnit();
+		double thisInches = this.toBaseUnit();
+		double otherInches = other.toBaseUnit();
 
-		double sumFeet = thisFeet + otherFeet;
+		double sumInches = thisInches + otherInches;
 
-		double resultValue = sumFeet / targetUnit.toFeet(1.0);
+		double resultValue = sumInches / targetUnit.toInches(1.0);
 
 		return new Length(resultValue, targetUnit);
 	}
@@ -109,5 +110,10 @@ public class Length {
 	@Override
 	public int hashCode() {
 		return Objects.hash(toBaseUnit());
+	}
+
+	@Override
+	public String toString() {
+		return String.format("%.2f %s", value, unit);
 	}
 }
