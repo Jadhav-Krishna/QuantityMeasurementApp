@@ -93,4 +93,9 @@ public class Length {
         long normalized = Math.round(toBaseUnit() / EPSILON);
         return Objects.hash(normalized);
     }
+
+    @Override
+    public String toString() {
+        return String.format("%.2f %s", value, unit);
+    }
 }
