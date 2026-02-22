@@ -22,8 +22,11 @@ public class Length {
 	}
 
 	public Length(double value, LengthUnit unit) {
+		if (!Double.isFinite(value)) {
+			throw new IllegalArgumentException("value must be a finite number");
+		}
 		if (unit == null) {
-			throw new IllegalArgumentException("unit not null");
+			throw new IllegalArgumentException("unit must not be null");
 		}
 		this.value = value;
 		this.unit = unit;

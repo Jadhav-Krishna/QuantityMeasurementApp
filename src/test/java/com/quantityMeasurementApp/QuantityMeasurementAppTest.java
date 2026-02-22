@@ -60,7 +60,24 @@ public class QuantityMeasurementAppTest {
 	}
 
 	@Test
+	public void testEquality_DifferentClass() {
+		Length l1 = new Length(1.0, Length.LengthUnit.FEET);
+		assertFalse(l1.equals("1.0 FEET"));
+	}
+
+	@Test
 	public void testEquality_NullUnit() {
 		assertThrows(IllegalArgumentException.class, () -> new Length(1.0, null));
+	}
+
+	@Test
+	public void testEquality_NonNumericInput_NaN() {
+		assertThrows(IllegalArgumentException.class, () -> new Length(Double.NaN, Length.LengthUnit.FEET));
+	}
+
+	@Test
+	public void testEquality_NonNumericInput_Infinite() {
+		assertThrows(IllegalArgumentException.class,
+				() -> new Length(Double.POSITIVE_INFINITY, Length.LengthUnit.INCHES));
 	}
 }
