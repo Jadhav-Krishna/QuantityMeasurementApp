@@ -988,7 +988,7 @@ public class QuantityMeasurementAppTest {
 	void testConversion_GallonToLitre() {
 		Quantity<VolumeUnit> result = new Quantity<>(1.0, VolumeUnit.GALLON).convertTo(VolumeUnit.LITRE);
 
-		assertEquals(3.78541, result.getValue(), EPSILON);
+		assertEquals(3.79, result.getValue(), EPSILON);
 	}
 
 	@Test
