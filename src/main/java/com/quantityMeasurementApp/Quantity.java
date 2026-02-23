@@ -63,95 +63,38 @@ public class Quantity<U extends IMeasurable> {
 	}
 
 	public Quantity<U> add(Quantity<U> other) {
-
-		if (other == null) {
-			throw new IllegalArgumentException("Quantity cannot be null");
-		}
-
 		return add(other, this.unit);
 	}
 
 	public Quantity<U> add(Quantity<U> other, U targetUnit) {
 
-		if (other == null) {
-			throw new IllegalArgumentException("Quantity cannot be null");
-		}
+		validateArithmeticOperands(other, targetUnit, true);
 
-		if (targetUnit == null) {
-			throw new IllegalArgumentException("Target unit cannot be null");
-		}
-
-		double base1 = this.unit.convertToBaseUnit(this.value);
-		double base2 = other.unit.convertToBaseUnit(other.value);
-
-		double sumBase = base1 + base2;
-		double resultValue = targetUnit.convertFromBaseUnit(sumBase);
+		double baseResult = performBaseArithmetic(other, ArithmeticOperation.ADD);
+		double resultValue = targetUnit.convertFromBaseUnit(baseResult);
 
 		return new Quantity<>(resultValue, targetUnit);
 	}
 
-	private void validateArithmetic(Quantity<U> other) {
-		if (other == null)
-			throw new IllegalArgumentException("Other quantity cannot be null");
-
-		if (this.unit == null || other.unit == null)
-			throw new IllegalArgumentException("Unit cannot be null");
-
-		if (!this.unit.getClass().equals(other.unit.getClass()))
-			throw new IllegalArgumentException("Incompatible measurement categories");
-
-		if (!Double.isFinite(this.value) || !Double.isFinite(other.value))
-			throw new IllegalArgumentException("Values must be finite");
-	}
-
 	public Quantity<U> subtract(Quantity<U> other) {
-
-		validateArithmetic(other);
-
-//		double baseThis = this.unit.convertToBaseUnit(this.value);
-//		double baseOther = other.unit.convertToBaseUnit(other.value);
-//
-//		double baseResult = baseThis - baseOther;
-
-		double baseResult = performBaseArithmetic(other, ArithmeticOperation.SUBTRACT);
-
-		double resultInTarget = this.unit.convertFromBaseUnit(baseResult);
-
-		resultInTarget = Math.round(resultInTarget * 100.0) / 100.0;
-
-		return new Quantity<>(resultInTarget, this.unit);
+		return subtract(other, this.unit);
 	}
 
 	public Quantity<U> subtract(Quantity<U> other, U targetUnit) {
 
-		validateArithmetic(other);
+		validateArithmeticOperands(other, targetUnit, true);
 
-		if (targetUnit == null)
-			throw new IllegalArgumentException("Target unit cannot be null");
+		double baseResult = performBaseArithmetic(other, ArithmeticOperation.SUBTRACT);
+		double resultValue = targetUnit.convertFromBaseUnit(baseResult);
 
-		double baseThis = this.unit.convertToBaseUnit(this.value);
-		double baseOther = other.unit.convertToBaseUnit(other.value);
-
-		double baseResult = baseThis - baseOther;
-
-		double resultInTarget = targetUnit.convertFromBaseUnit(baseResult);
-
-		resultInTarget = Math.round(resultInTarget * 100.0) / 100.0;
-
-		return new Quantity<>(resultInTarget, targetUnit);
+		return new Quantity<>(resultValue, targetUnit);
 	}
 
 	public double divide(Quantity<U> other) {
 
-		validateArithmetic(other);
+		validateArithmeticOperands(other, null, false);
 
-		double baseThis = this.unit.convertToBaseUnit(this.value);
-		double baseOther = other.unit.convertToBaseUnit(other.value);
-
-		if (Math.abs(baseOther) < EPSILON)
-			throw new ArithmeticException("Division by zero");
-
-		return baseThis / baseOther;
+		return performBaseArithmetic(other, ArithmeticOperation.DIVIDE);
 	}
 
 	private void validateArithmeticOperands(Quantity<U> other, U targetUnit, boolean targetUnitRequired) {
@@ -204,10 +147,6 @@ public class Quantity<U extends IMeasurable> {
 		public double compute(double a, double b) {
 			return operation.applyAsDouble(a, b);
 		}
-	}
-
-	private double round(double value) {
-		return Math.round(value * 100.0) / 100.0;
 	}
 
 	@Override
