@@ -1,6 +1,7 @@
 package com.quantityMeasurementApp;
 
 import java.util.Objects;
+import java.util.function.DoubleBinaryOperator;
 
 public class Quantity<U extends IMeasurable> {
 
@@ -107,10 +108,12 @@ public class Quantity<U extends IMeasurable> {
 
 		validateArithmetic(other);
 
-		double baseThis = this.unit.convertToBaseUnit(this.value);
-		double baseOther = other.unit.convertToBaseUnit(other.value);
+//		double baseThis = this.unit.convertToBaseUnit(this.value);
+//		double baseOther = other.unit.convertToBaseUnit(other.value);
+//
+//		double baseResult = baseThis - baseOther;
 
-		double baseResult = baseThis - baseOther;
+		double baseResult = performBaseArithmetic(other, ArithmeticOperation.SUBTRACT);
 
 		double resultInTarget = this.unit.convertFromBaseUnit(baseResult);
 
@@ -145,10 +148,66 @@ public class Quantity<U extends IMeasurable> {
 		double baseThis = this.unit.convertToBaseUnit(this.value);
 		double baseOther = other.unit.convertToBaseUnit(other.value);
 
-		if (baseOther == 0.0)
+		if (Math.abs(baseOther) < EPSILON)
 			throw new ArithmeticException("Division by zero");
 
 		return baseThis / baseOther;
+	}
+
+	private void validateArithmeticOperands(Quantity<U> other, U targetUnit, boolean targetUnitRequired) {
+
+		if (other == null) {
+			throw new IllegalArgumentException("Other quantity cannot be null");
+		}
+
+		if (!unit.getClass().equals(other.unit.getClass())) {
+			throw new IllegalArgumentException("Incompatible measurement categories");
+		}
+
+		if (Double.isNaN(value) || Double.isInfinite(value) || Double.isNaN(other.value)
+				|| Double.isInfinite(other.value)) {
+			throw new IllegalArgumentException("Invalid numeric values");
+		}
+
+		if (targetUnitRequired && targetUnit == null) {
+			throw new IllegalArgumentException("Target unit cannot be null");
+		}
+	}
+
+	private double performBaseArithmetic(Quantity<U> other, ArithmeticOperation operation) {
+
+		double thisBase = unit.convertToBaseUnit(this.value);
+		double otherBase = other.unit.convertToBaseUnit(other.value);
+
+		return operation.compute(thisBase, otherBase);
+	}
+
+	private enum ArithmeticOperation {
+
+		ADD((a, b) -> a + b),
+
+		SUBTRACT((a, b) -> a - b),
+
+		DIVIDE((a, b) -> {
+			if (Math.abs(b) < EPSILON) {
+				throw new ArithmeticException("Cannot divide by zero");
+			}
+			return a / b;
+		});
+
+		private final DoubleBinaryOperator operation;
+
+		ArithmeticOperation(DoubleBinaryOperator operation) {
+			this.operation = operation;
+		}
+
+		public double compute(double a, double b) {
+			return operation.applyAsDouble(a, b);
+		}
+	}
+
+	private double round(double value) {
+		return Math.round(value * 100.0) / 100.0;
 	}
 
 	@Override
