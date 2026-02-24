@@ -4,23 +4,14 @@ import java.util.function.Function;
 
 public enum TemperatureUnit implements IMeasurable {
 
-	CELSIUS(false), FAHRENHEIT(true), KELVIN(false);
-
-	private final boolean isFahrenheit;
+	CELSIUS(c -> c), 
+	FAHRENHEIT(f -> (f - 32) * 5 / 9), 
+	KELVIN(k -> k - 273.15);
 
 	private final Function<Double, Double> conversionToBase;
 
-	TemperatureUnit(boolean isFahrenheit) {
-
-		this.isFahrenheit = isFahrenheit;
-
-		if (this == FAHRENHEIT) {
-			conversionToBase = f -> (f - 32) * 5 / 9;
-		} else if (this == KELVIN) {
-			conversionToBase = k -> k - 273.15;
-		} else {
-			conversionToBase = c -> c;
-		}
+	TemperatureUnit(Function<Double, Double> conversionToBase) {
+		this.conversionToBase = conversionToBase;
 	}
 
 	@Override
