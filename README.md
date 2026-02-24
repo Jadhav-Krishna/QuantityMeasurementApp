@@ -90,36 +90,98 @@ This document walks through the evolution of the Quantity Measurement codebase, 
 
 ---
 
-## **Summary Timeline**
+## Summary Timeline
 
-```
-UC1: Basic equality (Feet)
-  ↓
-UC2: Cross-unit comparison (Feet + Inches)
-  ↓
-UC3: Generic Length class + DRY principle
-  ↓
-UC4: More units (Yards, Centimeters)
-  ↓
-UC5: Unit conversion operations
-  ↓
-UC6: Addition (same/different units)
-  ↓
-UC7: Addition with explicit target unit
-  ↓
-UC8: Standalone enum with conversion responsibility
-  ↓
-UC9: Multi-category support (Weight) - Duplication problem!
-  ↓
-UC10: Generic architecture - Problem solved!
-  ↓
-UC11: Volume measurements - Architecture validation
-  ↓
-UC12: Subtraction and Division - Expanding arithmetic
-  ↓
-UC13: Centralized arithmetic logic - DRY at operation level
-  ↓
-UC14: Temperature with selective arithmetic - Advanced constraints
-```
+<div align="center">
 
----
+<table>
+<tr><td align="center">
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC1-FeetEquality">
+🔗 <b>UC1:</b> Basic Equality (Feet)
+</a>
+
+<br>⬇<br>
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC2-InchEquality">
+🔗 <b>UC2:</b> Cross-Unit Comparison (Feet + Inches)
+</a>
+
+<br>⬇<br>
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC3-GenericLength">
+🔗 <b>UC3:</b> Generic Length Class + DRY Principle
+</a>
+
+<br>⬇<br>
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC4-YardEquality">
+🔗 <b>UC4:</b> More Units (Yards, Centimeters)
+</a>
+
+<br>⬇<br>
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC5-UnitConversion">
+🔗 <b>UC5:</b> Unit Conversion Operations
+</a>
+
+<br>⬇<br>
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC6-UnitAddition">
+🔗 <b>UC6:</b> Addition (Same/Different Units)
+</a>
+
+<br>⬇<br>
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC7-TargetUnitAddition">
+🔗 <b>UC7:</b> Addition with Explicit Target Unit
+</a>
+
+<br>⬇<br>
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC8-StandaloneUnit">
+🔗 <b>UC8:</b> Standalone Enum with Conversion Responsibility
+</a>
+
+<br>⬇<br>
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC9-WeightMeasurement">
+🔗 <b>UC9:</b> Multi-Category Support (Weight) – Duplication Problem
+</a>
+
+<br>⬇<br>
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC10-MultiCategoryUnit">
+🔗 <b>UC10:</b> Generic Architecture – Problem Solved
+</a>
+
+<br>⬇<br>
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC11-VolumeEquality">
+🔗 <b>UC11:</b> Volume Measurements – Architecture Validation
+</a>
+
+<br>⬇<br>
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC12-QuantitySubtractionDivision">
+🔗 <b>UC12:</b> Subtraction & Division – Expanding Arithmetic
+</a>
+
+<br>⬇<br>
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC13-CentralizedArithmeticLogic">
+🔗 <b>UC13:</b> Centralized Arithmetic Logic – DRY at Operation Level
+</a>
+
+<br>⬇<br>
+
+<a href="https://github.com/Jadhav-Krishna/QuantityMeasurementApp/tree/feature/UC14-TemperatureMeasurement">
+🔗 <b>UC14:</b> Temperature with Selective Arithmetic – Advanced Constraints
+</a>
+
+</td></tr>
+</table>
+
+</div>
+
+----
