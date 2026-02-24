@@ -6,6 +6,66 @@ This document walks through the evolution of the Quantity Measurement codebase, 
 
 ---
 
+## **Final Architecture**
+
+```
+📂IMeasurable (interface)
+    ├── getConversionFactor()
+    ├── convertToBaseUnit()
+    ├── convertFromBaseUnit()
+    ├── getUnitName()
+    ├── supportsArithmetic() [default: true]
+    └── validateOperationSupport() [default: no-op]
+        ↑
+        ├──📂 LengthUnit (enum)
+        │   ├── FEET
+        │   ├── INCHES
+        │   ├── YARDS
+        │   └── CENTIMETERS
+        │
+        ├──📂 WeightUnit (enum)
+        │   ├── KILOGRAM
+        │   ├── GRAM
+        │   └── POUND
+        │
+        ├──📂 VolumeUnit (enum)
+        │   ├── LITRE
+        │   ├── MILLILITRE
+        │   └── GALLON
+        │
+        └──📂 TemperatureUnit (enum) [arithmetic disabled]
+            ├── CELSIUS
+            ├── FAHRENHEIT
+            └── KELVIN
+
+📂 SupportsArithmetic (functional interface)
+    └── boolean isSupported()
+
+📂 Quantity<U extends IMeasurable> (generic class)
+    ├── value: double
+    ├── unit: U
+    ├── equals()
+    ├── convertTo()
+    ├── add() / add(other, targetUnit)
+    ├── subtract() / subtract(other, targetUnit)
+    ├── divide()
+    └── ArithmeticOperation (private enum)
+        ├── ADD
+        ├── SUBTRACT
+        └── DIVIDE
+
+📂 QuantityMeasurementApp
+    ├── demonstrateEquality<U>()
+    ├── demonstrateComparison<U>()
+    ├── demonstrateConversion<U>()
+    ├── demonstrateAddition<U>()
+    ├── demonstrateSubtraction<U>()
+    ├── demonstrateDivision<U>()
+    └── demonstrateTemperature()
+```
+
+---
+
 ## **UC1: Basic Feet Equality - The Foundation**
 
 ### **What we did:**
