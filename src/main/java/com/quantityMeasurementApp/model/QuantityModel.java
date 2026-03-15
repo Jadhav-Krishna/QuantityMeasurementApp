@@ -3,7 +3,6 @@ package com.quantityMeasurementApp.model;
 import com.quantityMeasurementApp.IMeasurable;
 import com.quantityMeasurementApp.LengthUnit;
 import com.quantityMeasurementApp.WeightUnit;
-
 public class QuantityModel<U extends IMeasurable> {
 
     public double value;

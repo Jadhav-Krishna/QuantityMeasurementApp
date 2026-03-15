@@ -913,3 +913,69 @@ QuantityDTO sum = controller.addQuantities(dto1, dto2);  // 2.0 FEET
 ```
 
 ---
+
+## **UC16: Database Integration with JDBC for Quantity Measurement Persistence**
+
+### **What we did:**
+- Added JDBC-based persistent repository: `QuantityMeasurementDatabaseRepository`
+- Added connection pooling with HikariCP (`ConnectionPool`)
+- Added centralized configuration via `application.properties` (`ApplicationConfig`)
+- Added production schema script at `src/main/resources/db/schema.sql`
+- Extended repository contract for query/filter/count/delete/resource operations
+- Kept backward compatibility with `QuantityMeasurementCacheRepository`
+- Wired repository selection through configuration (`app.repository.type=cache|database`)
+
+### **What we learned:**
+
+#### 1. Repository Swapping with Dependency Injection
+```java
+String repositoryType = ApplicationConfig.getInstance().getRepositoryType();
+if ("database".equalsIgnoreCase(repositoryType)) {
+    return new QuantityMeasurementDatabaseRepository();
+}
+return QuantityMeasurementCacheRepository.getInstance();
+```
+
+#### 2. JDBC + Parameterized SQL
+```java
+PreparedStatement statement = connection.prepareStatement(INSERT_SQL);
+statement.setDouble(1, entity.getThisValue());
+statement.setString(2, entity.getThisUnit());
+statement.setString(3, entity.getThisMeasurementType());
+```
+
+#### 3. Transaction Management
+```java
+connection.setAutoCommit(false);
+deleteHistory.executeUpdate();
+deleteAll.executeUpdate();
+connection.commit();
+```
+
+#### 4. Connection Pool Monitoring
+```java
+Map<String, Integer> stats = repository.getPoolStatistics();
+// activeConnections, idleConnections, totalConnections, threadsAwaitingConnection
+```
+
+### **UC16 Additions:**
+- `src/main/java/com/quantityMeasurementApp/util/ApplicationConfig.java`
+- `src/main/java/com/quantityMeasurementApp/util/ConnectionPool.java`
+- `src/main/java/com/quantityMeasurementApp/exception/DatabaseException.java`
+- `src/main/java/com/quantityMeasurementApp/repository/QuantityMeasurementDatabaseRepository.java`
+- `src/main/resources/application.properties`
+- `src/main/resources/db/schema.sql`
+- `src/main/resources/logback.xml`
+
+### **Test Coverage Added:**
+- `src/test/java/com/quantityMeasurementApp/repository/QuantityMeasurementDatabaseRepositoryTest.java`
+- `src/test/java/com/quantityMeasurementApp/service/QuantityMeasurementServiceImplTest.java`
+- `src/test/java/com/quantityMeasurementApp/controller/QuantityMeasurementControllerTest.java`
+- `src/test/java/com/quantityMeasurementApp/integrationTests/QuantityMeasurementIntegrationTest.java`
+
+### **Outcome:**
+- UC1–UC15 behavior is preserved
+- UC16 adds persistent DB history, queryability, pool stats, and structured logging
+- Application can switch between cache and database repository without service/controller changes
+
+---
