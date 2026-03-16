@@ -17,14 +17,19 @@ This document walks through the evolution of the Quantity Measurement codebase, 
 │   └── QuantityMeasurementServiceImpl.java
 ├── 📂 repository/
 │   ├── IQuantityMeasurementRepository.java
-│   └── QuantityMeasurementCacheRepository.java (Singleton)
+│   ├── QuantityMeasurementCacheRepository.java (Singleton)
+│   └── QuantityMeasurementDatabaseRepository.java
 ├── 📂 model/
 │   ├── QuantityModel.java
 │   └── QuantityMeasurementEntity.java
 ├── 📂 dto/
 │   └── QuantityDTO.java
-└── 📂 exception/
-    └── QuantityMeasurementException.java
+├── 📂 exception/
+│   ├── QuantityMeasurementException.java
+│   └── DatabaseException.java
+└── 📂 util/
+    ├── ApplicationConfig.java
+    └── ConnectionPool.java
 
 📂 Core Domain
 ├── 📂 IMeasurable (interface)
@@ -75,11 +80,20 @@ This document walks through the evolution of the Quantity Measurement codebase, 
 📂 QuantityMeasurementApp (Singleton + Factory)
     ├── getInstance()
     ├── getController()
-    ├── createLength()
-    ├── createWeight()
-    ├── createVolume()
-    ├── createTemperature()
+    ├── createRepository()
+    ├── createController()
+    ├── createService()
     └── createQuantityDTO()
+
+📂 Resources
+├── application.properties
+├── logback.xml
+└── db/
+    ├── schema.sql
+    └── schema-postgresql.sql
+
+📂 Test Resources
+└── db/schema-h2.sql
 ```
 
 ---
@@ -697,285 +711,43 @@ public enum DateUnit implements IMeasurable {
 ## **UC15: N-Tier Architecture Refactoring**
 
 ### **What we did:**
-- Refactored the monolithic application into a layered N-Tier Architecture
-- Created **Controller**, **Service**, **Repository**, **Model/DTO**, and **Exception** layers
-- Organized code into proper package structure reflecting the architecture
-- Implemented design patterns: Singleton, Factory, Dependency Injection
-- Added file-based persistence through cache repository
-- Created clean separation between internal models and external DTOs
+- Refactored into N-tier layers: `controller`, `service`, `repository`, `model`, `dto`, `exception`
+- Added clean interfaces (`IQuantityMeasurementService`, `IQuantityMeasurementRepository`)
+- Kept business logic in service, orchestration in controller, persistence in repository
+- Used DI + factory methods so repository implementation can be swapped
 
-### **What we learned:**
-
-#### 1. N-Tier Architecture Pattern
-```
-📂 controller/
-    └── QuantityMeasurementController.java
-📂 service/
-    ├── IQuantityMeasurementService.java
-    └── QuantityMeasurementServiceImpl.java
-📂 repository/
-    ├── IQuantityMeasurementRepository.java
-    └── QuantityMeasurementCacheRepository.java
-📂 model/
-    ├── QuantityModel.java
-    └── QuantityMeasurementEntity.java
-📂 dto/
-    └── QuantityDTO.java
-📂 exception/
-    └── QuantityMeasurementException.java
-```
-
-**Layer responsibilities:**
-- **Controller**: User interaction layer, delegates to service
-- **Service**: Business logic, orchestrates operations
-- **Repository**: Data persistence, abstracts storage mechanism
-- **Model/Entity**: Internal domain objects, persistence entities
-- **DTO**: External API contracts, decoupled from domain
-
-#### 2. Data Transfer Object (DTO) Pattern
-```java
-public class QuantityDTO {
-    public interface IMeasurableUnit {
-        String getUnitName();
-        String getMeasurementType();
-    }
-    
-    public enum LengthUnit implements IMeasurableUnit { FEET, INCHES, YARDS, CENTIMETERS; }
-    public enum VolumeUnit implements IMeasurableUnit { LITRE, MILLILITRE, GALLON; }
-    public enum WeightUnit implements IMeasurableUnit { KILOGRAM, GRAM, POUND; }
-    public enum TemperatureUnit implements IMeasurableUnit { CELSIUS, FAHRENHEIT, KELVIN; }
-    
-    public double value;
-    public String unit;
-    public String measurementType;
-}
-```
-
-**Why DTO matters:**
-- **Decoupling**: External API independent of internal implementation
-- **Versioning**: Can change internal model without breaking API
-- **Security**: Expose only what's needed externally
-- **Simplicity**: Simpler objects for data transfer
-
-#### 3. Repository Pattern with Singleton
-```java
-public class QuantityMeasurementCacheRepository implements IQuantityMeasurementRepository {
-    private static QuantityMeasurementCacheRepository instance;
-    private final Map<String, QuantityMeasurementEntity> cache;
-    private static final Path STORAGE_FILE = Path.of("quantity_measurements.dat");
-    
-    private QuantityMeasurementCacheRepository() {
-        cache = new ConcurrentHashMap<>();
-        loadFromDisk();
-    }
-    
-    public static synchronized QuantityMeasurementCacheRepository getInstance() {
-        if (instance == null) {
-            instance = new QuantityMeasurementCacheRepository();
-        }
-        return instance;
-    }
-}
-```
-
-**Singleton benefits:**
-- Single instance ensures data consistency
-- Central access point for persistence
-- Lazy initialization for resource efficiency
-- Thread-safe implementation with `synchronized`
-
-#### 4. Service Layer with Interface Segregation
-```java
-public interface IQuantityMeasurementService {
-    boolean compare(QuantityDTO dto1, QuantityDTO dto2);
-    QuantityDTO convert(QuantityDTO dto, String targetUnit);
-    QuantityDTO add(QuantityDTO dto1, QuantityDTO dto2);
-    QuantityDTO add(QuantityDTO dto1, QuantityDTO dto2, String targetUnit);
-    QuantityDTO subtract(QuantityDTO dto1, QuantityDTO dto2);
-    QuantityDTO subtract(QuantityDTO dto1, QuantityDTO dto2, String targetUnit);
-    double divide(QuantityDTO dto1, QuantityDTO dto2);
-}
-
-public class QuantityMeasurementServiceImpl implements IQuantityMeasurementService {
-    private final IQuantityMeasurementRepository repository;
-    
-    public QuantityMeasurementServiceImpl(IQuantityMeasurementRepository repository) {
-        this.repository = repository;  // Dependency Injection
-    }
-}
-```
-
-**Interface Segregation Principle:**
-- Clients depend only on methods they use
-- Repository interface separate from service interface
-- Easy to mock for testing
-
-#### 5. Factory Pattern in Application
-```java
-public final class QuantityMeasurementApp {
-    private static QuantityMeasurementApp instance;
-    private final QuantityMeasurementController controller;
-    
-    private QuantityMeasurementApp() {
-        IQuantityMeasurementRepository repository = QuantityMeasurementCacheRepository.getInstance();
-        IQuantityMeasurementService service = new QuantityMeasurementServiceImpl(repository);
-        this.controller = new QuantityMeasurementController(service, repository);
-    }
-    
-    // Factory methods
-    public static Quantity<LengthUnit> createLength(double value, LengthUnit unit) {
-        return new Quantity<>(value, unit);
-    }
-}
-```
-
-**Factory pattern benefits:**
-- Centralized object creation
-- Encapsulates construction complexity
-- Easy to change implementations
-
-#### 6. Entity Pattern for Persistence
-```java
-public class QuantityMeasurementEntity implements Serializable {
-    private final String id;
-    private final String operationType;
-    private final double value1;
-    private final String unit1;
-    private final double value2;
-    private final String unit2;
-    private final String resultUnit;
-    private final double result;
-    private final LocalDateTime timestamp;
-}
-```
-
-**Entity characteristics:**
-- Serializable for persistence
-- Unique ID for identification
-- Immutable for thread safety
-- Complete operation record
-
-#### 7. Controller Layer
-```java
-public class QuantityMeasurementController {
-    private final IQuantityMeasurementService service;
-    private final IQuantityMeasurementRepository repository;
-    
-    public boolean compareQuantities(QuantityDTO dto1, QuantityDTO dto2) {
-        return service.compare(dto1, dto2);
-    }
-    
-    public QuantityDTO convertQuantity(QuantityDTO dto, String targetUnit) {
-        return service.convert(dto, targetUnit);
-    }
-}
-```
-
-**Controller responsibilities:**
-- Receive user requests
-- Delegate to appropriate service
-- Return results to caller
-- No business logic
-
-### **Design patterns summary:**
-
-| Pattern | Implementation | Purpose |
-|---------|----------------|---------|
-| **Singleton** | CacheRepository, App | Single instance, global access |
-| **Factory** | QuantityMeasurementApp | Object creation encapsulation |
-| **Repository** | IQuantityMeasurementRepository | Data access abstraction |
-| **DTO** | QuantityDTO | External data transfer |
-| **Dependency Injection** | ServiceImpl constructor | Loose coupling |
-| **Interface Segregation** | IService, IRepository | Client-specific interfaces |
-
-### **Architecture benefits:**
-
-1. **Separation of Concerns**: Each layer has single responsibility
-2. **Testability**: Easy to mock dependencies for unit testing
-3. **Maintainability**: Changes isolated to specific layers
-4. **Scalability**: Can replace implementations without affecting others
-5. **Reusability**: Layers can be reused across applications
-
-### **Usage example:**
-```java
-// Application setup (factory pattern + singleton)
-QuantityMeasurementApp app = QuantityMeasurementApp.getInstance();
-
-// Create DTOs for external communication
-QuantityDTO dto1 = new QuantityDTO(1.0, QuantityDTO.LengthUnit.FEET);
-QuantityDTO dto2 = new QuantityDTO(12.0, QuantityDTO.LengthUnit.INCHES);
-
-// Use controller for operations
-QuantityMeasurementController controller = app.getController();
-boolean equal = controller.compareQuantities(dto1, dto2);  // true
-QuantityDTO converted = controller.convertQuantity(dto1, "INCHES");  // 12.0 INCHES
-QuantityDTO sum = controller.addQuantities(dto1, dto2);  // 2.0 FEET
-```
+### **Outcome:**
+- Better maintainability and testability
+- Backward compatibility with UC1–UC14 preserved
+- Base foundation for JDBC persistence (UC16)
 
 ---
 
 ## **UC16: Database Integration with JDBC for Quantity Measurement Persistence**
 
 ### **What we did:**
-- Added JDBC-based persistent repository: `QuantityMeasurementDatabaseRepository`
-- Added connection pooling with HikariCP (`ConnectionPool`)
-- Added centralized configuration via `application.properties` (`ApplicationConfig`)
-- Added production schema script at `src/main/resources/db/schema.sql`
-- Extended repository contract for query/filter/count/delete/resource operations
-- Kept backward compatibility with `QuantityMeasurementCacheRepository`
-- Wired repository selection through configuration (`app.repository.type=cache|database`)
+- Implemented `QuantityMeasurementDatabaseRepository` (JDBC)
+- Added connection pooling (`HikariCP`) and config loader (`ApplicationConfig`)
+- Added SQL schema for H2 and PostgreSQL
+- Added `DatabaseException` and repository query/count/delete methods
+- Added layered tests (repository, service, controller, integration)
 
-### **What we learned:**
+### **Storage Modes:**
+- `app.repository.type=database` → saves to PostgreSQL
+- `app.repository.type=cache` → saves to in-memory/file cache
 
-#### 1. Repository Swapping with Dependency Injection
-```java
-String repositoryType = ApplicationConfig.getInstance().getRepositoryType();
-if ("database".equalsIgnoreCase(repositoryType)) {
-    return new QuantityMeasurementDatabaseRepository();
-}
-return QuantityMeasurementCacheRepository.getInstance();
-```
-
-#### 2. JDBC + Parameterized SQL
-```java
-PreparedStatement statement = connection.prepareStatement(INSERT_SQL);
-statement.setDouble(1, entity.getThisValue());
-statement.setString(2, entity.getThisUnit());
-statement.setString(3, entity.getThisMeasurementType());
-```
-
-#### 3. Transaction Management
-```java
-connection.setAutoCommit(false);
-deleteHistory.executeUpdate();
-deleteAll.executeUpdate();
-connection.commit();
-```
-
-#### 4. Connection Pool Monitoring
-```java
-Map<String, Integer> stats = repository.getPoolStatistics();
-// activeConnections, idleConnections, totalConnections, threadsAwaitingConnection
-```
-
-### **UC16 Additions:**
+### **Essential files:**
+- `src/main/java/com/quantityMeasurementApp/repository/QuantityMeasurementDatabaseRepository.java`
 - `src/main/java/com/quantityMeasurementApp/util/ApplicationConfig.java`
 - `src/main/java/com/quantityMeasurementApp/util/ConnectionPool.java`
-- `src/main/java/com/quantityMeasurementApp/exception/DatabaseException.java`
-- `src/main/java/com/quantityMeasurementApp/repository/QuantityMeasurementDatabaseRepository.java`
 - `src/main/resources/application.properties`
-- `src/main/resources/db/schema.sql`
-- `src/main/resources/logback.xml`
-
-### **Test Coverage Added:**
-- `src/test/java/com/quantityMeasurementApp/repository/QuantityMeasurementDatabaseRepositoryTest.java`
-- `src/test/java/com/quantityMeasurementApp/service/QuantityMeasurementServiceImplTest.java`
-- `src/test/java/com/quantityMeasurementApp/controller/QuantityMeasurementControllerTest.java`
-- `src/test/java/com/quantityMeasurementApp/integrationTests/QuantityMeasurementIntegrationTest.java`
+- `src/main/resources/db/schema-postgresql.sql`
+- `src/test/resources/db/schema-h2.sql`
 
 ### **Outcome:**
-- UC1–UC15 behavior is preserved
-- UC16 adds persistent DB history, queryability, pool stats, and structured logging
-- Application can switch between cache and database repository without service/controller changes
+- Persistent operation history with JDBC
+- Safe SQL via prepared statements
+- Transaction support + pool statistics
+- UC1–UC15 behavior retained
 
 ---
