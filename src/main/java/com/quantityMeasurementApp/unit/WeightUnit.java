@@ -1,15 +1,14 @@
-package com.quantityMeasurementApp;
+package com.quantityMeasurementApp.unit;
 
-public enum LengthUnit implements IMeasurable {
+public enum WeightUnit implements IMeasurable {
 
-    FEET(12.0),
-    INCHES(1.0),
-    YARDS(36.0),
-    CENTIMETERS(0.393701);
+    KILOGRAM(1.0),
+    GRAM(0.001),
+    POUND(0.453592);
 
     private final double conversionFactor;
 
-    LengthUnit(double conversionFactor) {
+    WeightUnit(double conversionFactor) {
         this.conversionFactor = conversionFactor;
     }
 
