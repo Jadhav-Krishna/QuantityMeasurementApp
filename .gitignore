@@ -58,3 +58,9 @@ build/
 ### OS files ###
 .DS_Store
 Thumbs.db
+
+### Dump folder ###
+/dump/
+
+### Serialized cache ###
+*.ser
