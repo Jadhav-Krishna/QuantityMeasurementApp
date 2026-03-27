@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -20,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @WithMockUser
+@ActiveProfiles("test")
 class QuantityMeasurementAppApplicationTests {
 
     @Autowired
@@ -301,5 +303,19 @@ class QuantityMeasurementAppApplicationTests {
         mockMvc.perform(get("/api/v1/quantities/history/type/LengthUnit"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(2)));
+    }
+
+    @Test
+    void testAuthStatusEndpoint() throws Exception {
+        mockMvc.perform(get("/auth/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.authenticated").exists());
+    }
+
+    @Test
+    void testAuthLoginEndpoint() throws Exception {
+        mockMvc.perform(get("/auth/login"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.loginUrl").value("/oauth2/authorization/google"));
     }
 }

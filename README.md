@@ -723,31 +723,105 @@ public enum DateUnit implements IMeasurable {
 
 ---
 
-## **UC16: Database Integration with JDBC for Quantity Measurement Persistence**
+## **UC16: Database Integration with JDBC**
 
 ### **What we did:**
-- Implemented `QuantityMeasurementDatabaseRepository` (JDBC)
-- Added connection pooling (`HikariCP`) and config loader (`ApplicationConfig`)
-- Added SQL schema for H2 and PostgreSQL
-- Added `DatabaseException` and repository query/count/delete methods
-- Added layered tests (repository, service, controller, integration)
+- Implemented `QuantityMeasurementDatabaseRepository` with JDBC
+- Added HikariCP connection pooling
+- Created SQL schemas for H2 and PostgreSQL
 
-### **Storage Modes:**
-- `app.repository.type=database` → saves to PostgreSQL
-- `app.repository.type=cache` → saves to in-memory/file cache
-
-### **Essential files:**
-- `src/main/java/com/quantityMeasurementApp/repository/QuantityMeasurementDatabaseRepository.java`
-- `src/main/java/com/quantityMeasurementApp/util/ApplicationConfig.java`
-- `src/main/java/com/quantityMeasurementApp/util/ConnectionPool.java`
-- `src/main/resources/application.properties`
-- `src/main/resources/db/schema-postgresql.sql`
-- `src/test/resources/db/schema-h2.sql`
-
-### **Outcome:**
-- Persistent operation history with JDBC
-- Safe SQL via prepared statements
-- Transaction support + pool statistics
-- UC1–UC15 behavior retained
+### **Key concepts:**
+- **Connection pooling** for efficient database access
+- **Prepared statements** for SQL injection prevention
+- **Repository pattern** for data access abstraction
 
 ---
+
+## **UC17: Spring Boot REST Services and JPA**
+
+### **What we did:**
+- Migrated to Spring Boot 4.0.3 with Spring Data JPA
+- Created REST API endpoints for all quantity operations
+- Replaced JDBC with JPA repositories
+- Added Spring Security foundation
+
+### **Key concepts:**
+- **Spring Boot auto-configuration** eliminates boilerplate
+- **Spring Data JPA** provides repository implementations
+- **REST controllers** with `@RestController`, `@RequestMapping`
+- **DTO pattern** separates API contracts from entities
+
+### **API Endpoints:**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/quantities/compare` | Compare two quantities |
+| POST | `/api/v1/quantities/add` | Add quantities |
+| POST | `/api/v1/quantities/subtract` | Subtract quantities |
+| POST | `/api/v1/quantities/divide` | Divide quantities |
+| GET | `/api/v1/quantities/history` | Get operation history |
+
+---
+
+## **UC18: Google OAuth2 Authentication and User Management**
+
+### **What we did:**
+- Integrated Google OAuth2 for secure authentication
+- Created `User` entity with Google profile data
+- Added user-measurement ownership (ManyToOne relationship)
+- Configured multi-database support (PostgreSQL, MySQL, H2)
+
+### **Key concepts:**
+- **OAuth2 flow**: User → Google → Callback → JWT/Session
+- **CustomOAuth2UserService** persists Google user info
+- **CustomOAuth2User** wraps OAuth2User with our User entity
+- **@AuthenticationPrincipal** injects authenticated user into controllers
+
+### **New Components:**
+```
+├── model/User.java                    # User entity with OAuth2 fields
+├── repository/UserRepository.java     # JPA repository for users
+├── security/
+│   ├── CustomOAuth2UserService.java   # Persists Google users
+│   ├── CustomOAuth2User.java          # Principal wrapper
+│   └── OAuth2AuthenticationSuccessHandler.java
+├── controller/AuthController.java     # Auth endpoints
+└── dto/UserDTO.java                   # User data transfer object
+```
+
+### **User-Specific Endpoints:**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/auth/user` | Get current user info |
+| GET | `/auth/status` | Check authentication status |
+| GET | `/api/v1/quantities/my/history` | User's operation history |
+
+### **Configuration Profiles:**
+- `dev` - H2 in-memory, debug logging
+- `test` - H2 for automated tests
+- `mysql` - MySQL database
+- (default) - PostgreSQL production
+
+### **Environment Variables:**
+```bash
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+DATABASE_URL=jdbc:postgresql://localhost:5432/quantity_measurement_db
+```
+
+---
+
+## **Quick Start**
+
+```bash
+# Development (H2)
+mvn spring-boot:run -Dspring.profiles.active=dev
+
+# Production (PostgreSQL + OAuth2)
+export GOOGLE_CLIENT_ID=xxx GOOGLE_CLIENT_SECRET=xxx
+mvn spring-boot:run
+```
+
+## **Tests**
+```bash
+mvn test  # 32 tests passing
+```

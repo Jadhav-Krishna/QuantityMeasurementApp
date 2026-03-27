@@ -2,11 +2,14 @@ spring:
   application:
     name: quantity-measurement-app
 
+  profiles:
+    active: dev
+
   datasource:
-    url: jdbc:h2:mem:quantitymeasurementdb;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: jdbc:postgresql://ep-royal-pond-adar8bsz-pooler.c-2.us-east-1.aws.neon.tech/QuantityMeasurementApp?sslmode=require&channelBinding=require
+    username: neondb_owner
+    password: npg_JVdmz0bH2xRU
+    driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -15,7 +18,7 @@ spring:
       max-lifetime: 1800000
 
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
     show-sql: true
@@ -23,17 +26,37 @@ spring:
       hibernate:
         format_sql: true
 
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-      settings:
-        web-allow-others: false
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: 146358255319-tmolc0sahtv1ik2gh2cuanbgiklfkfnl.apps.googleusercontent.com
+            client-secret: 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
+            scope:
+              - email
+              - profile
+              - openid
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+
+app:
+  oauth2:
+    redirect-uri: http://localhost:8080/pages/auth/index.html
+  jwt:
+    secret: VGhpc0lzQVNlY3VyZVNob3VsSaltXRMZWFzdDMyQ2hhcmFjdGVyc0xvbmdGb3JKV1Q=
+    expiration-ms: 86400000
 
 logging:
   level:
     root: INFO
     com.app.quantity_measurement_app: DEBUG
+    org.springframework.security: DEBUG
     org.springframework.web: DEBUG
     org.hibernate.SQL: DEBUG
 
