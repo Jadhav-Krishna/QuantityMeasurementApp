@@ -1,0 +1,15 @@
+com\app\userservice\controller\HistoryController.class
+com\app\userservice\controller\UserController.class
+com\app\userservice\UserServiceApplication.class
+com\app\userservice\controller\ApiExceptionHandler.class
+com\app\userservice\repository\UserProfileRepository.class
+com\app\userservice\domain\MeasurementCategory.class
+com\app\userservice\entity\UserProfile.class
+com\app\userservice\domain\MeasurementOperation.class
+com\app\userservice\dto\UserHistoryResponse.class
+com\app\userservice\dto\UserResponse.class
+com\app\userservice\dto\CreateUserRequest.class
+com\app\userservice\entity\UserHistoryRecord.class
+com\app\userservice\dto\UserHistoryRequest.class
+com\app\userservice\repository\UserHistoryRepository.class
+com\app\userservice\service\UserApplicationService.class

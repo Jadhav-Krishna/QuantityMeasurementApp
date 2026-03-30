@@ -1,5 +1,117 @@
 # Quantity Measurement App
 
+## Microservices Overview
+
+This repository now builds the Quantity Measurement App as four Spring microservices:
+
+| Service | Port | Why it exists |
+| --- | --- | --- |
+| `eureka-server` | `8761` | Service registry so the other services can find each other without hardcoding hostnames |
+| `admin-server` | `9090` | Monitoring dashboard that shows health, metrics, loggers, and actuator details for registered services |
+| `api-gateway` | `8080` | One public entry point that forwards `/api/measurements/**` and `/api/users/**` traffic |
+| `measurement-service` | `8081` | Owns measurement conversion and computation logic plus its own H2 database |
+| `user-service` | `8082` | Owns user profiles and user-specific conversion history in a separate H2 database |
+
+### Why this split matters
+
+- Single Responsibility: each service owns one concern, which keeps code easier to reason about and change.
+- Loose Coupling: services talk over HTTP and service discovery instead of sharing classes or databases.
+- Database per Service: `measurement-service` and `user-service` persist to their own H2 databases.
+- Resilience: `measurement-service` still completes conversions even if `user-service` is unavailable; user-history sync is best effort.
+
+### Startup order
+
+1. Start `eureka-server`
+2. Start `admin-server`
+3. Start `measurement-service`
+4. Start `user-service`
+5. Start `api-gateway`
+
+### Eureka registration flow
+
+When a service boots, it registers itself with Eureka using its `spring.application.name`, host, and port. After that it sends periodic heartbeats so Eureka knows the instance is still alive, and other services query Eureka instead of hardcoding network addresses.
+
+- `eureka-server` runs on `http://localhost:8761`
+- `admin-server` runs on `http://localhost:9090`
+- Open `http://localhost:8761` to verify registrations in the Eureka dashboard
+- `measurement-service`, `user-service`, and `api-gateway` are configured to register themselves and fetch the live registry
+- In this project, clients renew every `10` seconds and expire after `30` seconds of silence
+
+### Monitoring with Admin Server
+
+The admin server discovers applications through Eureka and reads their actuator endpoints. Open `http://localhost:9090` after the services are up to monitor health, metrics, logger configuration, and other runtime details in one dashboard.
+
+### Gateway routing flow
+
+Clients only need one public address: `http://localhost:8080`. The API gateway checks the incoming path, matches it against configured predicates, asks Eureka for the current target instance behind the `lb://` service name, and forwards the request internally.
+
+- `/api/convert/**` is routed to `lb://measurement-service`
+- `/api/measurements/**` is routed to `lb://measurement-service`
+- `/api/users/**` is routed to `lb://user-service`
+- A global logging filter records the incoming request and the completion time for every routed call
+
+### Build and run
+
+```bash
+mvn test
+mvn -pl eureka-server spring-boot:run
+mvn -pl admin-server spring-boot:run
+mvn -pl measurement-service spring-boot:run
+mvn -pl user-service spring-boot:run
+mvn -pl api-gateway spring-boot:run
+```
+
+### Example API flow
+
+Create a user:
+
+```http
+POST /api/users
+Content-Type: application/json
+
+{
+  "name": "Asha",
+  "email": "asha@example.com"
+}
+```
+
+Convert kilometres to miles through the gateway:
+
+```http
+GET /api/convert/length?from=km&to=miles&value=10&userId=42
+```
+
+Compute values in the same category:
+
+```http
+POST /api/measurements/compute
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "category": "WEIGHT",
+  "operation": "ADD",
+  "leftValue": 2,
+  "leftUnit": "KG",
+  "rightValue": 2.20462,
+  "rightUnit": "LBS",
+  "resultUnit": "KG"
+}
+```
+
+Temperature currently supports conversion and comparison. Arithmetic is limited to length, weight, and volume to keep the service semantics clear.
+
+### Complete end-to-end request flow
+
+1. Client sends `GET http://localhost:8080/api/convert/length?from=km&to=miles&value=10&userId=42`
+2. `api-gateway` matches `Path=/api/convert/**` and routes to `lb://measurement-service`
+3. Eureka resolves `measurement-service` to the currently registered instance
+4. `measurement-service` handles the call in `ConversionController -> ConversionService.convertLength()`
+5. The conversion result is calculated as `10 km = 6.21 miles`
+6. `measurement-service` calls `UserServiceClient.saveHistory(42, ...)` through Feign
+7. `user-service` handles `POST /api/users/42/history` in `HistoryController` and stores the record in its own H2 database
+8. The client receives a response shaped like `{"from":"km","to":"miles","input":10.0,"result":6.21}`
+
 ## **Building a Quantity Measurement System**
 
 This document walks through the evolution of the Quantity Measurement codebase, where we progressively learned fundamental software design principles by solving increasingly complex problems. From basic equality comparisons to advanced arithmetic operations with selective support, this journey demonstrates real-world software evolution.
