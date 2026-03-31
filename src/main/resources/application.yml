@@ -1,4 +1,10 @@
 spring:
+  application:
+    name: quantity-measurement-app
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://ep-royal-pond-adar8bsz-pooler.c-2.us-east-1.aws.neon.tech/QuantityMeasurementApp?sslmode=require&channelBinding=require}
     username: ${DATABASE_USERNAME:neondb_owner}
@@ -41,10 +47,10 @@ spring:
 
 app:
   oauth2:
-    redirect-uri: http://localhost:3000/auth
+    redirect-uri: ${APP_REDIRECT_URI:http://localhost:3000/auth}
   jwt:
-    secret: VGhpc0lzQVNlY3VyZVNob3VsSaltXRMZWFzdDMyQ2hhcmFjdGVyc0xvbmdGb3JKV1Q=
-    expiration-ms: 86400000
+    secret: ${APP_JWT_SECRET:VGhpc0lzQVNlY3VyZVNob3VsZsdjfvdsFzdDMyQ2hhcmFjdGVyc0xvbmdGb3JKV1Q=}
+    expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}
 
 logging:
   level:
@@ -61,3 +67,11 @@ springdoc:
     enabled: true
     path: /swagger-ui.html
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

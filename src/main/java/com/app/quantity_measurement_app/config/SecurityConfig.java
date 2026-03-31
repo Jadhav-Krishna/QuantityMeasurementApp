@@ -4,6 +4,7 @@ import com.app.quantity_measurement_app.security.CustomOAuth2UserService;
 import com.app.quantity_measurement_app.security.CustomOidcUserService;
 import com.app.quantity_measurement_app.security.JwtAuthenticationFilter;
 import com.app.quantity_measurement_app.security.OAuth2AuthenticationSuccessHandler;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -67,7 +68,7 @@ public class SecurityConfig {
                 )
                 .logout(logout -> logout
                         .logoutUrl("/auth/logout")
-                        .logoutSuccessUrl("/")
+                        .logoutSuccessHandler((request, response, authentication) -> response.setStatus(HttpServletResponse.SC_OK))
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
                 )

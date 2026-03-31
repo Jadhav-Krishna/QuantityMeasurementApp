@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://ep-royal-pond-adar8bsz-pooler.c-2.us-east-1.aws.neon.tech/QuantityMeasurementApp?sslmode=require&channelBinding=require
-    username: neondb_owner
-    password: npg_JVdmz0bH2xRU
+    url: ${DATABASE_URL:jdbc:postgresql://ep-royal-pond-adar8bsz-pooler.c-2.us-east-1.aws.neon.tech/QuantityMeasurementApp?sslmode=require&channelBinding=require}
+    username: ${DATABASE_USERNAME:neondb_owner}
+    password: ${DATABASE_PASSWORD:npg_JVdm1xRU}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -25,8 +25,8 @@ spring:
       client:
         registration:
           google:
-            client-id: 146358255319-tmolc0sahtv1ik2gh2cuanbgiklfkfnl.apps.googleusercontent.com
-            client-secret: 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
+            client-id: ${GOOGLE_CLIENT_ID:146358255319-tmolc0sahtv1itfiklfkfnl.apps.googleusercontent.com}
+            client-secret: ${GOOGLE_CLIENT_SECRET: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hHr}
             scope:
               - email
               - profile
@@ -41,7 +41,7 @@ spring:
 
 app:
   oauth2:
-    redirect-uri: http://localhost:8080/pages/auth/index.html
+    redirect-uri: http://localhost:3000/auth
   jwt:
     secret: VGhpc0lzQVNlY3VyZVNob3VsSaltXRMZWFzdDMyQ2hhcmFjdGVyc0xvbmdGb3JKV1Q=
     expiration-ms: 86400000

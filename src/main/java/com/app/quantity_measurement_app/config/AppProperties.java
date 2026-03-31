@@ -27,7 +27,7 @@ public class AppProperties {
     }
 
     public static class OAuth2Properties {
-        private String redirectUri = "http://localhost:8080/pages/auth/index.html";
+        private String redirectUri = "http://localhost:3000/auth";
 
         public String getRedirectUri() {
             return redirectUri;
