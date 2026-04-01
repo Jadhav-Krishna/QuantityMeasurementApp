@@ -61,6 +61,46 @@ mvn -pl user-service spring-boot:run
 mvn -pl api-gateway spring-boot:run
 ```
 
+### Docker local stack
+
+This project now includes multi-stage Dockerfiles for every service and a root [docker-compose.yml](d:/QuantityMeasurementApp/docker-compose.yml) for local integration testing.
+
+```bash
+docker compose up --build
+```
+
+What this does:
+- starts MySQL for `measurement-service` and `user-service`
+- starts Eureka on `8761`
+- starts Spring Boot Admin on `9090`
+- starts `measurement-service` on `8081`
+- starts `user-service` on `8082`
+- starts `api-gateway` on `8080`
+
+Why the Dockerfiles are slightly different from a single-service project:
+- this repo is a Maven multi-module build, so each Dockerfile builds from the parent project context
+- the final runtime image still contains only the packaged JAR, not Maven or source code
+
+### Push images to Docker Hub
+
+Docker Hub stores images, not running containers. This project is configured so each service image can be tagged under one Docker Hub namespace.
+
+1. Create a `.env` file from [.env.example](d:/QuantityMeasurementApp/.env.example)
+2. Set `DOCKERHUB_USERNAME` to your Docker Hub username
+3. Run `docker login`
+4. Run:
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\push-images.ps1
+```
+
+This will build and push:
+- `${DOCKERHUB_USERNAME}/qm-eureka-server:latest`
+- `${DOCKERHUB_USERNAME}/qm-admin-server:latest`
+- `${DOCKERHUB_USERNAME}/qm-api-gateway:latest`
+- `${DOCKERHUB_USERNAME}/qm-measurement-service:latest`
+- `${DOCKERHUB_USERNAME}/qm-user-service:latest`
+
 ### Example API flow
 
 Create a user:

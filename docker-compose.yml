@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: measurementdb
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpassword"]
+      interval: 10s
+      retries: 5
+    networks:
+      - qm-network
+
+  eureka-server:
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}:/qm-eureka-server:latest
+    build:
+      context: .
+      dockerfile: eureka-server/Dockerfile
+    ports:
+      - "8761:8761"
+    networks:
+      - qm-network
+
+  admin-server:
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-admin-server:latest
+    build:
+      context: .
+      dockerfile: admin-server/Dockerfile
+    ports:
+      - "9090:9090"
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_started
+    networks:
+      - qm-network
+
+  measurement-service:
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-measurement-service:latest
+    build:
+      context: .
+      dockerfile: measurement-service/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASS: rootpassword
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks:
+      - qm-network
+
+  user-service:
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-user-service:latest
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASS: rootpassword
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks:
+      - qm-network
+
+  api-gateway:
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-api-gateway:latest
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_started
+    networks:
+      - qm-network
+
+volumes:
+  mysql-data:
+
+networks:
+  qm-network:
+    driver: bridge
