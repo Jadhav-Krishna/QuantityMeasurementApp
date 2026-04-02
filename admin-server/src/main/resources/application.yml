@@ -8,6 +8,12 @@ spring:
     admin:
       discovery:
         ignored-services: admin-server
+      ui:
+        external-views:
+          - label: Frontend
+            url: http://localhost:3000
+          - label: Eureka Dashboard
+            url: http://localhost:8761
 
 eureka:
   client:

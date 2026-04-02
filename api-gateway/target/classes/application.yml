@@ -7,6 +7,22 @@ spring:
   cloud:
     gateway:
       routes:
+        - id: auth-route
+          uri: lb://user-service
+          predicates:
+            - Path=/auth/**
+        - id: oauth2-route
+          uri: lb://user-service
+          predicates:
+            - Path=/oauth2/**
+        - id: login-route
+          uri: lb://user-service
+          predicates:
+            - Path=/login/**
+        - id: measurement-v1-route
+          uri: lb://measurement-service
+          predicates:
+            - Path=/api/v1/quantities/**
         - id: measurement-route
           uri: lb://measurement-service
           predicates:

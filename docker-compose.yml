@@ -1,29 +1,13 @@
-version: '3.8'
-
 services:
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: measurementdb
-    ports:
-      - "3307:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpassword"]
-      interval: 10s
-      retries: 5
-    networks:
-      - qm-network
-
   eureka-server:
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}:/qm-eureka-server:latest
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-eureka-server:latest
     build:
       context: .
       dockerfile: eureka-server/Dockerfile
     ports:
       - "8761:8761"
+    environment:
+      SPRING_BOOT_ADMIN_CLIENT_URL: http://admin-server:9090
     networks:
       - qm-network
 
@@ -50,14 +34,12 @@ services:
     ports:
       - "8081:8081"
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      DB_HOST: mysql
-      DB_USER: root
-      DB_PASS: rootpassword
+      SPRING_DATASOURCE_URL: ${MEASUREMENT_DATASOURCE_URL:-jdbc:postgresql://ep-royal-pond-adar8bsz-pooler.c-2.us-east-1.aws.neon.tech/QuantityMeasurement?sslmode=require&channelBinding=require}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_DATASOURCE_USERNAME: ${MEASUREMENT_DATASOURCE_USERNAME:-neondb_owner}
+      SPRING_DATASOURCE_PASSWORD: ${MEASUREMENT_DATASOURCE_PASSWORD:-npg_JVdmz0AI1xRU}
       EUREKA_URL: http://eureka-server:8761/eureka/
     depends_on:
-      mysql:
-        condition: service_healthy
       eureka-server:
         condition: service_started
     networks:
@@ -71,14 +53,16 @@ services:
     ports:
       - "8082:8082"
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      DB_HOST: mysql
-      DB_USER: root
-      DB_PASS: rootpassword
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://ep-royal-pond-adar8bsz-pooler.c-2.us-east-1.aws.neon.tech/QuantityMeasurement?sslmode=require&channelBinding=require}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-neondb_owner}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-npg_JVdmz0AI1xRU}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-placeholder-google-client-id}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-placeholder-google-client-secret}
+      APP_REDIRECT_URI: ${APP_REDIRECT_URI:-http://localhost:3000/auth}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-VGhpc0lzQVNlY3VyZVNob3VsZEJlQXRMZWFzdDMyQ2hhcmFjdGVyc0xvbmdGb3JKV1Q=}
       EUREKA_URL: http://eureka-server:8761/eureka/
     depends_on:
-      mysql:
-        condition: service_healthy
       eureka-server:
         condition: service_started
     networks:
@@ -96,11 +80,25 @@ services:
     depends_on:
       eureka-server:
         condition: service_started
+      user-service:
+        condition: service_started
+      measurement-service:
+        condition: service_started
     networks:
       - qm-network
 
-volumes:
-  mysql-data:
+  frontend:
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-frontend:latest
+    build:
+      context: ../QuantityMeasurementApp-Frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      api-gateway:
+        condition: service_started
+    networks:
+      - qm-network
 
 networks:
   qm-network:

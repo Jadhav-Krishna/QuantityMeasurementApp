@@ -9,14 +9,14 @@ This repository now builds the Quantity Measurement App as four Spring microserv
 | `eureka-server` | `8761` | Service registry so the other services can find each other without hardcoding hostnames |
 | `admin-server` | `9090` | Monitoring dashboard that shows health, metrics, loggers, and actuator details for registered services |
 | `api-gateway` | `8080` | One public entry point that forwards `/api/measurements/**` and `/api/users/**` traffic |
-| `measurement-service` | `8081` | Owns measurement conversion and computation logic plus its own H2 database |
-| `user-service` | `8082` | Owns user profiles and user-specific conversion history in a separate H2 database |
+| `measurement-service` | `8081` | Owns measurement conversion and computation logic plus its own MySQL database |
+| `user-service` | `8082` | Owns user profiles and user-specific conversion history in a separate PostgreSQL database |
 
 ### Why this split matters
 
 - Single Responsibility: each service owns one concern, which keeps code easier to reason about and change.
 - Loose Coupling: services talk over HTTP and service discovery instead of sharing classes or databases.
-- Database per Service: `measurement-service` and `user-service` persist to their own H2 databases.
+- Database per Service: `measurement-service` persists to MySQL while `user-service` persists to PostgreSQL.
 - Resilience: `measurement-service` still completes conversions even if `user-service` is unavailable; user-history sync is best effort.
 
 ### Startup order
@@ -70,7 +70,8 @@ docker compose up --build
 ```
 
 What this does:
-- starts MySQL for `measurement-service` and `user-service`
+- starts MySQL for `measurement-service`
+- starts PostgreSQL for `user-service`
 - starts Eureka on `8761`
 - starts Spring Boot Admin on `9090`
 - starts `measurement-service` on `8081`
@@ -149,7 +150,7 @@ Temperature currently supports conversion and comparison. Arithmetic is limited 
 4. `measurement-service` handles the call in `ConversionController -> ConversionService.convertLength()`
 5. The conversion result is calculated as `10 km = 6.21 miles`
 6. `measurement-service` calls `UserServiceClient.saveHistory(42, ...)` through Feign
-7. `user-service` handles `POST /api/users/42/history` in `HistoryController` and stores the record in its own H2 database
+7. `user-service` handles `POST /api/users/42/history` in `HistoryController` and stores the record in its own PostgreSQL database
 8. The client receives a response shaped like `{"from":"km","to":"miles","input":10.0,"result":6.21}`
 
 ## **Building a Quantity Measurement System**
