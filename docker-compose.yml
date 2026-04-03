@@ -60,7 +60,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       APP_REDIRECT_URI: ${APP_REDIRECT_URI:-http://localhost:3000/auth}
-      APP_OAUTH2_REDIRECT_URI: ${APP_OAUTH2_REDIRECT_URI:-http://localhost:8080}
+      APP_OAUTH2_BASE_URI: ${APP_OAUTH2_BASE_URI:-http://localhost:3000}
       APP_JWT_SECRET: ${APP_JWT_SECRET:-}
       EUREKA_URL: http://eureka-server:8761/eureka/
     depends_on:

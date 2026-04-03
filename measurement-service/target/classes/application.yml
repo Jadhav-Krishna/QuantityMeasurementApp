@@ -9,10 +9,10 @@ spring:
       circuitbreaker:
         enabled: true
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-royal-pond-adar8bsz-pooler.c-2.us-east-1.aws.neon.tech/QuantityMeasurement?sslmode=require&channelBinding=require}
+    url: ${SPRING_DATASOURCE_URL:}
     driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
     username: ${SPRING_DATASOURCE_USERNAME:neondb_owner}
-    password: ${SPRING_DATASOURCE_PASSWORD:npg_JVdmz0AI1xRU}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
   h2:
     console:
       enabled: true

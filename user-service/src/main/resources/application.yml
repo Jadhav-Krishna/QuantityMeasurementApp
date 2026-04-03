@@ -1,5 +1,6 @@
 server:
   port: 8082
+  forward-headers-strategy: framework
 
 spring:
   application:
@@ -28,7 +29,7 @@ spring:
               - email
               - profile
               - openid
-            redirect-uri: "${APP_OAUTH2_REDIRECT_URI:http://localhost:8080}/login/oauth2/code/{registrationId}"
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
         provider:
           google:
             authorization-uri: https://accounts.google.com/o/oauth2/v2/auth

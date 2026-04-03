@@ -27,8 +27,6 @@ spring:
           uri: lb://measurement-service
           predicates:
             - Path=/api/convert/**
-          filters:
-            - StripPrefix=0
         - id: measurement-history-route
           uri: lb://measurement-service
           predicates:
