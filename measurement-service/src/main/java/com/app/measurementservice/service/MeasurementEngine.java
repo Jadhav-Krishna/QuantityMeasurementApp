@@ -12,6 +12,16 @@ public class MeasurementEngine {
     private static final double LITRE_TO_GALLONS = 0.264172;
     private static final double EPSILON = 1e-9;
 
+    // Canonical unit for each category: LENGTH=KM, WEIGHT=KG, VOLUME=L, TEMPERATURE=C
+    private static final double FEET_TO_KM = 0.0003048;
+    private static final double INCHES_TO_KM = 0.0000254;
+    private static final double YARDS_TO_KM = 0.0009144;
+    private static final double CM_TO_KM = 0.00001;
+    private static final double GRAM_TO_KG = 0.001;
+    private static final double POUND_TO_KG = 0.453592;
+    private static final double ML_TO_L = 0.001;
+    private static final double GALLON_TO_L = 3.78541;
+
     public double convert(MeasurementCategory category, double value, String fromUnit, String toUnit) {
         return round(convertFromCanonical(category, toCanonical(category, value, fromUnit), toUnit));
     }
@@ -67,62 +77,76 @@ public class MeasurementEngine {
     private String resolveResultUnit(MeasurementCategory category, String requestedUnit) {
         if (requestedUnit == null || requestedUnit.isBlank()) {
             return switch (category) {
-                case LENGTH -> "KM";
-                case WEIGHT -> "KG";
-                case VOLUME -> "L";
-                case TEMPERATURE -> "C";
+                case LENGTH -> "FEET";
+                case WEIGHT -> "KILOGRAM";
+                case VOLUME -> "LITRE";
+                case TEMPERATURE -> "CELSIUS";
             };
         }
         return requestedUnit.toUpperCase();
     }
 
     private double toCanonical(MeasurementCategory category, double value, String unit) {
-        String normalizedUnit = unit.toUpperCase();
+        String u = unit.toUpperCase();
         return switch (category) {
-            case LENGTH -> switch (normalizedUnit) {
+            case LENGTH -> switch (u) {
                 case "KM" -> value;
                 case "MILES" -> value / KM_TO_MILES;
+                case "FEET", "FOOT", "FT" -> value * FEET_TO_KM;
+                case "INCHES", "INCH", "IN" -> value * INCHES_TO_KM;
+                case "YARDS", "YARD", "YD" -> value * YARDS_TO_KM;
+                case "CENTIMETERS", "CENTIMETER", "CM" -> value * CM_TO_KM;
                 default -> throw unsupported(category, unit);
             };
-            case WEIGHT -> switch (normalizedUnit) {
-                case "KG" -> value;
-                case "LBS" -> value / KG_TO_LBS;
+            case WEIGHT -> switch (u) {
+                case "KG", "KILOGRAM", "KILOGRAMS" -> value;
+                case "LBS", "POUND", "POUNDS" -> value * POUND_TO_KG;
+                case "GRAM", "GRAMS", "G" -> value * GRAM_TO_KG;
                 default -> throw unsupported(category, unit);
             };
-            case VOLUME -> switch (normalizedUnit) {
-                case "L" -> value;
-                case "GALLONS" -> value / LITRE_TO_GALLONS;
+            case VOLUME -> switch (u) {
+                case "L", "LITRE", "LITER", "LITRES", "LITERS" -> value;
+                case "GALLONS", "GALLON" -> value * GALLON_TO_L;
+                case "ML", "MILLILITRE", "MILLILITER", "MILLILITRES", "MILLILITERS" -> value * ML_TO_L;
                 default -> throw unsupported(category, unit);
             };
-            case TEMPERATURE -> switch (normalizedUnit) {
-                case "C" -> value;
-                case "F" -> (value - 32) * 5 / 9;
+            case TEMPERATURE -> switch (u) {
+                case "C", "CELSIUS" -> value;
+                case "F", "FAHRENHEIT" -> (value - 32) * 5.0 / 9.0;
+                case "K", "KELVIN" -> value - 273.15;
                 default -> throw unsupported(category, unit);
             };
         };
     }
 
     private double convertFromCanonical(MeasurementCategory category, double value, String unit) {
-        String normalizedUnit = unit.toUpperCase();
+        String u = unit.toUpperCase();
         return switch (category) {
-            case LENGTH -> switch (normalizedUnit) {
+            case LENGTH -> switch (u) {
                 case "KM" -> value;
                 case "MILES" -> value * KM_TO_MILES;
+                case "FEET", "FOOT", "FT" -> value / FEET_TO_KM;
+                case "INCHES", "INCH", "IN" -> value / INCHES_TO_KM;
+                case "YARDS", "YARD", "YD" -> value / YARDS_TO_KM;
+                case "CENTIMETERS", "CENTIMETER", "CM" -> value / CM_TO_KM;
                 default -> throw unsupported(category, unit);
             };
-            case WEIGHT -> switch (normalizedUnit) {
-                case "KG" -> value;
-                case "LBS" -> value * KG_TO_LBS;
+            case WEIGHT -> switch (u) {
+                case "KG", "KILOGRAM", "KILOGRAMS" -> value;
+                case "LBS", "POUND", "POUNDS" -> value / POUND_TO_KG;
+                case "GRAM", "GRAMS", "G" -> value / GRAM_TO_KG;
                 default -> throw unsupported(category, unit);
             };
-            case VOLUME -> switch (normalizedUnit) {
-                case "L" -> value;
-                case "GALLONS" -> value * LITRE_TO_GALLONS;
+            case VOLUME -> switch (u) {
+                case "L", "LITRE", "LITER", "LITRES", "LITERS" -> value;
+                case "GALLONS", "GALLON" -> value / GALLON_TO_L;
+                case "ML", "MILLILITRE", "MILLILITER", "MILLILITRES", "MILLILITERS" -> value / ML_TO_L;
                 default -> throw unsupported(category, unit);
             };
-            case TEMPERATURE -> switch (normalizedUnit) {
-                case "C" -> value;
-                case "F" -> (value * 9 / 5) + 32;
+            case TEMPERATURE -> switch (u) {
+                case "C", "CELSIUS" -> value;
+                case "F", "FAHRENHEIT" -> (value * 9.0 / 5.0) + 32;
+                case "K", "KELVIN" -> value + 273.15;
                 default -> throw unsupported(category, unit);
             };
         };

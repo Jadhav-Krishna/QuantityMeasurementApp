@@ -24,6 +24,6 @@ public class ApiExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleUnexpected(Exception exception) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", "Unexpected server error"));
+                .body(Map.of("error", exception.getClass().getSimpleName() + ": " + exception.getMessage()));
     }
 }

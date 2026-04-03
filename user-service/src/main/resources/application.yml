@@ -5,10 +5,10 @@ spring:
   application:
     name: user-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-royal-pond-adar8bsz-pooler.c-2.us-east-1.aws.neon.tech/QuantityMeasurement?sslmode=require&channelBinding=require}
+    url: ${SPRING_DATASOURCE_URL:}
     driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
     username: ${SPRING_DATASOURCE_USERNAME:neondb_owner}
-    password: ${SPRING_DATASOURCE_PASSWORD:npg_JVdmz0AI1xRU}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
   h2:
     console:
       enabled: true
@@ -22,13 +22,13 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID:placeholder-google-client-id}
-            client-secret: ${GOOGLE_CLIENT_SECRET:placeholder-google-client-secret}
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
             scope:
               - email
               - profile
               - openid
-            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            redirect-uri: "${APP_OAUTH2_REDIRECT_URI:http://localhost:8080}/login/oauth2/code/{registrationId}"
         provider:
           google:
             authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
@@ -60,5 +60,5 @@ app:
   oauth2:
     redirect-uri: ${APP_REDIRECT_URI:http://localhost:3000/auth}
   jwt:
-    secret: ${APP_JWT_SECRET:VGhpc0lzQVNlY3VyZVNob3VsZEJlQXRMZWFzdDMyQ2hhcmFjdGVyc0xvbmdGb3JKV1Q=}
+    secret: ${APP_JWT_SECRET:}
     expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}
