@@ -24,4 +24,9 @@ public class UserServiceClientFallback implements UserServiceClient {
         logger.warn("user-service unavailable - history lookup skipped for user {}", userId);
         return List.of();
     }
+
+    @Override
+    public void deductCredit(Long userId) {
+        logger.warn("user-service unavailable - credit deduction skipped for user {}", userId);
+    }
 }

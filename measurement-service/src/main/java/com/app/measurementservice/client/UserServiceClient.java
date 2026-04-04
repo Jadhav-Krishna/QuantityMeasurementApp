@@ -21,4 +21,7 @@ public interface UserServiceClient {
 
     @GetMapping("/api/users/{userId}/history")
     List<ConversionHistoryResponse> getHistory(@PathVariable("userId") Long userId);
+
+    @PostMapping("/api/users/{userId}/credits/deduct")
+    void deductCredit(@PathVariable("userId") Long userId);
 }

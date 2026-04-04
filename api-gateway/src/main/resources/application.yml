@@ -35,6 +35,14 @@ spring:
           uri: lb://user-service
           predicates:
             - Path=/api/users/**
+        - id: payment-route
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payments/**
+        - id: email-route
+          uri: lb://email-service
+          predicates:
+            - Path=/api/emails/**
 
 eureka:
   client:

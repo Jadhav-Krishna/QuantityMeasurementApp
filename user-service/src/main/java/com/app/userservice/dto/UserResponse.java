@@ -6,6 +6,14 @@ public record UserResponse(
         Long id,
         String name,
         String email,
-        Instant createdAt
+        String givenName,
+        String familyName,
+        String pictureUrl,
+        Boolean emailVerified,
+        String role,
+        String authProvider,
+        Integer credits,
+        Instant createdAt,
+        Instant lastLoginAt
 ) {
 }

@@ -1,9 +1,7 @@
 services:
   eureka-server:
     image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-eureka-server:latest
-    build:
-      context: .
-      dockerfile: eureka-server/Dockerfile
+    pull_policy: always
     ports:
       - "8761:8761"
     environment:
@@ -13,9 +11,7 @@ services:
 
   admin-server:
     image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-admin-server:latest
-    build:
-      context: .
-      dockerfile: admin-server/Dockerfile
+    pull_policy: always
     ports:
       - "9090:9090"
     environment:
@@ -28,16 +24,14 @@ services:
 
   measurement-service:
     image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-measurement-service:latest
-    build:
-      context: .
-      dockerfile: measurement-service/Dockerfile
+    pull_policy: always
     ports:
       - "8081:8081"
     environment:
-      SPRING_DATASOURCE_URL: ${MEASUREMENT_DATASOURCE_URL:-jdbc:postgresql://ep-royal-pond-adar8bsz-pooler.c-2.us-east-1.aws.neon.tech/QuantityMeasurement?sslmode=require&channelBinding=require}
+      SPRING_DATASOURCE_URL: ${MEASUREMENT_DATASOURCE_URL}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
-      SPRING_DATASOURCE_USERNAME: ${MEASUREMENT_DATASOURCE_USERNAME:-neondb_owner}
-      SPRING_DATASOURCE_PASSWORD: ${MEASUREMENT_DATASOURCE_PASSWORD:-npg_JVdmz0AI1xRU}
+      SPRING_DATASOURCE_USERNAME: ${MEASUREMENT_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${MEASUREMENT_DATASOURCE_PASSWORD}
       EUREKA_URL: http://eureka-server:8761/eureka/
     depends_on:
       eureka-server:
@@ -47,21 +41,19 @@ services:
 
   user-service:
     image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-user-service:latest
-    build:
-      context: .
-      dockerfile: user-service/Dockerfile
+    pull_policy: always
     ports:
       - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-neondb_owner}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       APP_REDIRECT_URI: ${APP_REDIRECT_URI:-http://localhost:3000/auth}
       APP_OAUTH2_BASE_URI: ${APP_OAUTH2_BASE_URI:-http://localhost:3000}
-      APP_JWT_SECRET: ${APP_JWT_SECRET:-}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
       EUREKA_URL: http://eureka-server:8761/eureka/
     depends_on:
       eureka-server:
@@ -71,9 +63,7 @@ services:
 
   api-gateway:
     image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-api-gateway:latest
-    build:
-      context: .
-      dockerfile: api-gateway/Dockerfile
+    pull_policy: always
     ports:
       - "8080:8080"
     environment:
@@ -85,14 +75,57 @@ services:
         condition: service_started
       measurement-service:
         condition: service_started
+      email-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+    networks:
+      - qm-network
+
+  email-service:
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-email-service:latest
+    pull_policy: always
+    ports:
+      - "8083:8083"
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM:-noreply@quantitymeasurement.app}
+    depends_on:
+      eureka-server:
+        condition: service_started
+    networks:
+      - qm-network
+
+  payment-service:
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-payment-service:latest
+    pull_policy: always
+    ports:
+      - "8084:8084"
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      PAYMENT_DATASOURCE_URL: ${PAYMENT_DATASOURCE_URL}
+      PAYMENT_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      PAYMENT_DATASOURCE_USERNAME: ${PAYMENT_DATASOURCE_USERNAME}
+      PAYMENT_DATASOURCE_PASSWORD: ${PAYMENT_DATASOURCE_PASSWORD}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+    depends_on:
+      eureka-server:
+        condition: service_started
+      user-service:
+        condition: service_started
+      email-service:
+        condition: service_started
     networks:
       - qm-network
 
   frontend:
     image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-frontend:latest
-    build:
-      context: ../QuantityMeasurementApp-Frontend
-      dockerfile: Dockerfile
+    pull_policy: always
     ports:
       - "3000:80"
     depends_on:

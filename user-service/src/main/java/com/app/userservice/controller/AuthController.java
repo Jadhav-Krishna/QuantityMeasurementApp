@@ -65,7 +65,7 @@ public class AuthController {
         if (user == null) {
             return ResponseEntity.status(401).build();
         }
-        return ResponseEntity.ok(toUserResponse(user));
+        return ResponseEntity.ok(userApplicationService.toUserResponse(user));
     }
 
     @GetMapping("/status")
@@ -74,7 +74,7 @@ public class AuthController {
         boolean authenticated = user != null;
         return ResponseEntity.ok(Map.of(
                 "authenticated", authenticated,
-                "user", authenticated ? toUserResponse(user) : Map.of()
+                "user", authenticated ? userApplicationService.toUserResponse(user) : Map.of()
         ));
     }
 
@@ -90,7 +90,7 @@ public class AuthController {
     }
 
     private AuthResponse buildAuthResponse(UserProfile user, String token) {
-        return new AuthResponse(token, "Bearer", jwtService.getExpirationMs() / 1000, toUserResponse(user));
+        return new AuthResponse(token, "Bearer", jwtService.getExpirationMs() / 1000, userApplicationService.toUserResponse(user));
     }
 
     private UserProfile resolveUser(Authentication authentication) {
@@ -110,9 +110,5 @@ public class AuthController {
         }
 
         return null;
-    }
-
-    private UserResponse toUserResponse(UserProfile profile) {
-        return new UserResponse(profile.getId(), profile.getName(), profile.getEmail(), profile.getCreatedAt());
     }
 }

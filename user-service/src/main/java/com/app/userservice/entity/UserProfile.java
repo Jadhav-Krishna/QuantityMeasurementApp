@@ -57,6 +57,8 @@ public class UserProfile {
 
     private Instant createdAt;
 
+    private int credits;
+
     public Long getId() {
         return id;
     }
@@ -189,5 +191,9 @@ public class UserProfile {
             authProvider = AuthProvider.LOCAL.name();
         }
         enabled = true;
+        if (credits == 0) credits = 5;
     }
+
+    public int getCredits() { return credits; }
+    public void setCredits(int credits) { this.credits = credits; }
 }

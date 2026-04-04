@@ -9,12 +9,12 @@ COPY admin-server/pom.xml admin-server/pom.xml
 COPY api-gateway/pom.xml api-gateway/pom.xml
 COPY measurement-service/pom.xml measurement-service/pom.xml
 COPY user-service/pom.xml user-service/pom.xml
-
-RUN mvn -pl api-gateway dependency:go-offline -q
+COPY email-service/pom.xml email-service/pom.xml
+COPY payment-service/pom.xml payment-service/pom.xml
 
 COPY api-gateway/src api-gateway/src
 
-RUN mvn -pl api-gateway -am clean package -DskipTests -q
+RUN mvn -B -ntp -pl api-gateway -am clean package -DskipTests -Dmaven.wagon.http.retryHandler.count=5
 
 # Stage 2: Run
 FROM eclipse-temurin:21-jre-alpine

@@ -16,6 +16,11 @@ public class ApiExceptionHandler {
         return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handlePaymentRequired(IllegalStateException exception) {
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(Map.of("error", exception.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidation(MethodArgumentNotValidException exception) {
         return ResponseEntity.badRequest().body(Map.of("error", "Request validation failed"));

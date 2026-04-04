@@ -1,8 +1,35 @@
+# Git
 .git
+.gitignore
+.gitattributes
+
+# IDE
 .idea
 .vscode
-target
-**/target
-node_modules
-*.iml
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Maven
+target/
+.m2/
+
+# Node/Frontend (not needed for backend builds)
+node_modules/
+dist/
+build/
+*.log
+
+# Docker
+.docker
+Dockerfile*
+docker-compose*.yml
+
+# Documentation
 README.md
+*.md
+
+# Environment files (for safety, but will be injected at runtime)
+.env
+.env.local

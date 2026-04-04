@@ -6,6 +6,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -17,6 +18,11 @@ public class ApiExceptionHandler {
         return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handlePaymentRequired(IllegalStateException exception) {
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(Map.of("error", exception.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidation(MethodArgumentNotValidException exception) {
         return ResponseEntity.badRequest().body(Map.of("error", "Request validation failed"));
@@ -25,6 +31,13 @@ public class ApiExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, String>> handleBadCredentials(BadCredentialsException exception) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid email or password"));
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException exception) {
+        HttpStatus status = HttpStatus.valueOf(exception.getStatusCode().value());
+        String message = exception.getReason() != null ? exception.getReason() : "Request failed";
+        return ResponseEntity.status(status).body(Map.of("error", message));
     }
 
     @ExceptionHandler(Exception.class)

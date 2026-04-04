@@ -1,13 +1,16 @@
 package com.app.measurementservice.controller;
 
+import com.app.measurementservice.client.UserServiceClient;
 import com.app.measurementservice.domain.MeasurementCategory;
 import com.app.measurementservice.domain.MeasurementOperation;
+import com.app.measurementservice.dto.ConversionHistoryRequest;
 import com.app.measurementservice.dto.HistoryItemResponse;
 import com.app.measurementservice.dto.QuantityRequest;
 import com.app.measurementservice.dto.QuantityResponse;
 import com.app.measurementservice.entity.MeasurementRecord;
 import com.app.measurementservice.repository.MeasurementRecordRepository;
 import com.app.measurementservice.service.MeasurementEngine;
+import feign.FeignException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -29,10 +32,12 @@ public class QuantityController {
 
     private final MeasurementEngine engine;
     private final MeasurementRecordRepository repository;
+    private final UserServiceClient userServiceClient;
 
-    public QuantityController(MeasurementEngine engine, MeasurementRecordRepository repository) {
+    public QuantityController(MeasurementEngine engine, MeasurementRecordRepository repository, UserServiceClient userServiceClient) {
         this.engine = engine;
         this.repository = repository;
+        this.userServiceClient = userServiceClient;
     }
 
     @PostMapping("/compare")
@@ -63,19 +68,16 @@ public class QuantityController {
     @GetMapping("/my/history")
     public ResponseEntity<List<HistoryItemResponse>> myHistory(HttpServletRequest http) {
         Long userId = extractUserId(http);
-        List<MeasurementRecord> records = userId != null
-                ? repository.findByUserIdOrderByRecordedAtDesc(userId)
-                : repository.findAllByOrderByRecordedAtDesc();
+        if (userId == null) return ResponseEntity.status(401).build();
+        List<MeasurementRecord> records = repository.findByUserIdOrderByRecordedAtDesc(userId);
         return ResponseEntity.ok(records.stream().map(this::toHistoryItem).toList());
     }
 
     @GetMapping("/my/history/errored")
     public ResponseEntity<List<HistoryItemResponse>> myHistoryErrored(HttpServletRequest http) {
         Long userId = extractUserId(http);
-        List<MeasurementRecord> records = userId != null
-                ? repository.findByUserIdOrderByRecordedAtDesc(userId)
-                : repository.findAllByOrderByRecordedAtDesc();
-        return ResponseEntity.ok(records.stream()
+        if (userId == null) return ResponseEntity.status(401).build();
+        return ResponseEntity.ok(repository.findByUserIdOrderByRecordedAtDesc(userId).stream()
                 .filter(r -> r.getMessage() != null && r.getMessage().toLowerCase().contains("error"))
                 .map(this::toHistoryItem).toList());
     }
@@ -84,11 +86,9 @@ public class QuantityController {
     public ResponseEntity<List<HistoryItemResponse>> myHistoryByOperation(
             @PathVariable String operation, HttpServletRequest http) {
         Long userId = extractUserId(http);
+        if (userId == null) return ResponseEntity.status(401).build();
         MeasurementOperation op = parseOperation(operation);
-        List<MeasurementRecord> records = userId != null
-                ? repository.findByUserIdOrderByRecordedAtDesc(userId)
-                : repository.findAllByOrderByRecordedAtDesc();
-        return ResponseEntity.ok(records.stream()
+        return ResponseEntity.ok(repository.findByUserIdOrderByRecordedAtDesc(userId).stream()
                 .filter(r -> op == null || op == r.getOperation())
                 .map(this::toHistoryItem).toList());
     }
@@ -97,11 +97,9 @@ public class QuantityController {
     public ResponseEntity<List<HistoryItemResponse>> myHistoryByType(
             @PathVariable String type, HttpServletRequest http) {
         Long userId = extractUserId(http);
+        if (userId == null) return ResponseEntity.status(401).build();
         MeasurementCategory category = parseCategory(type);
-        List<MeasurementRecord> records = userId != null
-                ? repository.findByUserIdOrderByRecordedAtDesc(userId)
-                : repository.findAllByOrderByRecordedAtDesc();
-        return ResponseEntity.ok(records.stream()
+        return ResponseEntity.ok(repository.findByUserIdOrderByRecordedAtDesc(userId).stream()
                 .filter(r -> category == null || category == r.getCategory())
                 .map(this::toHistoryItem).toList());
     }
@@ -115,32 +113,41 @@ public class QuantityController {
         Long userId = extractUserId(http);
 
         try {
+            consumeCreditIfNeeded(userId);
             QuantityResponse response;
             if (operation == MeasurementOperation.CONVERT) {
                 double result = engine.convert(category, left.value(), left.unit(), right.unit());
                 response = QuantityResponse.ofNumeric("convert", result, right.unit(), "Conversion completed");
-                saveRecord(userId, category, MeasurementOperation.CONVERT,
+                MeasurementRecord savedRecord = saveRecord(userId, category, MeasurementOperation.CONVERT,
                         left.value(), left.unit(), right.value(), right.unit(),
                         result, right.unit(), null, "Conversion completed");
+                syncUserHistory(savedRecord);
             } else if (operation == MeasurementOperation.COMPARE) {
                 MeasurementEngine.ComputationResult result = engine.compute(
                         category, MeasurementOperation.COMPARE,
                         left.value(), left.unit(), right.value(), right.unit(), null);
                 response = QuantityResponse.ofComparison(Boolean.TRUE.equals(result.comparisonResult()));
-                saveRecord(userId, category, MeasurementOperation.COMPARE,
+                MeasurementRecord savedRecord = saveRecord(userId, category, MeasurementOperation.COMPARE,
                         left.value(), left.unit(), right.value(), right.unit(),
                         null, null, result.comparisonResult(), "Comparison completed");
+                syncUserHistory(savedRecord);
             } else {
                 String targetUnit = resultUnit != null ? resultUnit : left.unit();
                 MeasurementEngine.ComputationResult result = engine.compute(
                         category, operation,
                         left.value(), left.unit(), right.value(), right.unit(), targetUnit);
                 response = QuantityResponse.ofNumeric(opName, result.resultValue(), result.resultUnit(), result.message());
-                saveRecord(userId, category, operation,
+                MeasurementRecord savedRecord = saveRecord(userId, category, operation,
                         left.value(), left.unit(), right.value(), right.unit(),
                         result.resultValue(), result.resultUnit(), null, result.message());
+                syncUserHistory(savedRecord);
             }
             return response;
+        } catch (IllegalStateException e) {
+            saveRecord(userId, category, operation,
+                    left.value(), left.unit(), right.value(), right.unit(),
+                    null, null, null, "ERROR: " + e.getMessage());
+            throw e;
         } catch (Exception e) {
             saveRecord(userId, category, operation,
                     left.value(), left.unit(), right.value(), right.unit(),
@@ -149,9 +156,9 @@ public class QuantityController {
         }
     }
 
-    private void saveRecord(Long userId, MeasurementCategory category, MeasurementOperation operation,
-                            double inputValue, String inputUnit, double secondaryValue, String secondaryUnit,
-                            Double resultValue, String resultUnit, Boolean comparisonResult, String message) {
+    private MeasurementRecord saveRecord(Long userId, MeasurementCategory category, MeasurementOperation operation,
+                                         double inputValue, String inputUnit, double secondaryValue, String secondaryUnit,
+                                         Double resultValue, String resultUnit, Boolean comparisonResult, String message) {
         MeasurementRecord record = new MeasurementRecord();
         record.setUserId(userId);
         record.setCategory(category);
@@ -165,7 +172,44 @@ public class QuantityController {
         record.setComparisonResult(comparisonResult);
         record.setMessage(message);
         record.setRecordedAt(Instant.now());
-        repository.save(record);
+        return repository.save(record);
+    }
+
+    private void consumeCreditIfNeeded(Long userId) {
+        if (userId == null) {
+            return;
+        }
+
+        try {
+            userServiceClient.deductCredit(userId);
+        } catch (FeignException exception) {
+            if (exception.status() == 402) {
+                throw new IllegalStateException("No credits remaining. Please recharge to continue.");
+            }
+            throw exception;
+        }
+    }
+
+    private void syncUserHistory(MeasurementRecord record) {
+        if (record.getUserId() == null) {
+            return;
+        }
+
+        try {
+            userServiceClient.saveHistory(record.getUserId(), new ConversionHistoryRequest(
+                    record.getCategory(),
+                    record.getOperation(),
+                    record.getInputValue(),
+                    record.getInputUnit(),
+                    record.getSecondaryValue(),
+                    record.getSecondaryUnit(),
+                    record.getResultValue(),
+                    record.getResultUnit(),
+                    record.getComparisonResult(),
+                    record.getMessage()
+            ));
+        } catch (Exception ignored) {
+        }
     }
 
     private HistoryItemResponse toHistoryItem(MeasurementRecord r) {

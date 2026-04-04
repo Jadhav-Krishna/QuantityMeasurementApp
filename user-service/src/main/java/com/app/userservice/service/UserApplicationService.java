@@ -1,6 +1,9 @@
 package com.app.userservice.service;
 
+import com.app.userservice.client.EmailServiceClient;
+import com.app.userservice.dto.CreditExhaustedEmailRequest;
 import com.app.userservice.dto.CreateUserRequest;
+import com.app.userservice.dto.LoginEmailRequest;
 import com.app.userservice.dto.UserHistoryRequest;
 import com.app.userservice.dto.UserHistoryResponse;
 import com.app.userservice.dto.UserResponse;
@@ -21,15 +24,18 @@ public class UserApplicationService {
     private final UserProfileRepository userProfileRepository;
     private final UserHistoryRepository userHistoryRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailServiceClient emailServiceClient;
 
     public UserApplicationService(
             UserProfileRepository userProfileRepository,
             UserHistoryRepository userHistoryRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            EmailServiceClient emailServiceClient
     ) {
         this.userProfileRepository = userProfileRepository;
         this.userHistoryRepository = userHistoryRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailServiceClient = emailServiceClient;
     }
 
     public UserResponse createUser(CreateUserRequest request) {
@@ -44,7 +50,7 @@ public class UserApplicationService {
         profile.setAuthProvider(UserProfile.AuthProvider.LOCAL.name());
         profile.setEnabled(true);
         profile.setCreatedAt(Instant.now());
-        return toResponse(userProfileRepository.save(profile));
+        return toUserResponse(userProfileRepository.save(profile));
     }
 
     public UserProfile saveOrUpdateOAuthUser(
@@ -79,7 +85,14 @@ public class UserApplicationService {
             user.setRole(UserProfile.Role.USER.name());
         }
 
-        return userProfileRepository.save(user);
+        UserProfile saved = userProfileRepository.save(user);
+
+        // Send login email (best-effort)
+        try {
+            emailServiceClient.sendLoginEmail(new LoginEmailRequest(saved.getEmail(), saved.getName()));
+        } catch (Exception ignored) {}
+
+        return saved;
     }
 
     public UserProfile registerLocalUser(String name, String email, String rawPassword) {
@@ -125,7 +138,7 @@ public class UserApplicationService {
     }
 
     public UserResponse getUser(Long userId) {
-        return toResponse(userProfileRepository.findById(userId)
+        return toUserResponse(userProfileRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId)));
     }
 
@@ -155,14 +168,61 @@ public class UserApplicationService {
                 .toList();
     }
 
+    public void deleteHistory(Long userId, Long historyId) {
+        ensureUserExists(userId);
+        UserHistoryRecord record = userHistoryRepository.findByIdAndUserId(historyId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("History record not found: " + historyId));
+        userHistoryRepository.delete(record);
+    }
+
     private void ensureUserExists(Long userId) {
         if (!userProfileRepository.existsById(userId)) {
             throw new IllegalArgumentException("User not found: " + userId);
         }
     }
 
-    private UserResponse toResponse(UserProfile profile) {
-        return new UserResponse(profile.getId(), profile.getName(), profile.getEmail(), profile.getCreatedAt());
+    public int getCredits(Long userId) {
+        return userProfileRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId))
+                .getCredits();
+    }
+
+    public int addCredits(Long userId, int amount) {
+        UserProfile user = userProfileRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        user.setCredits(user.getCredits() + amount);
+        return userProfileRepository.save(user).getCredits();
+    }
+
+    public int deductCredit(Long userId) {
+        UserProfile user = userProfileRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        if (user.getCredits() <= 0) {
+            try {
+                emailServiceClient.sendCreditExhaustedEmail(
+                        new CreditExhaustedEmailRequest(user.getEmail(), user.getName()));
+            } catch (Exception ignored) {}
+            throw new IllegalStateException("No credits remaining. Please recharge.");
+        }
+        user.setCredits(user.getCredits() - 1);
+        return userProfileRepository.save(user).getCredits();
+    }
+
+    public UserResponse toUserResponse(UserProfile profile) {
+        return new UserResponse(
+                profile.getId(),
+                profile.getName(),
+                profile.getEmail(),
+                profile.getGivenName(),
+                profile.getFamilyName(),
+                profile.getPictureUrl(),
+                profile.isEmailVerified(),
+                profile.getRole(),
+                profile.getAuthProvider(),
+                profile.getCredits(),
+                profile.getCreatedAt(),
+                profile.getLastLoginAt()
+        );
     }
 
     private UserHistoryResponse toHistoryResponse(UserHistoryRecord record) {

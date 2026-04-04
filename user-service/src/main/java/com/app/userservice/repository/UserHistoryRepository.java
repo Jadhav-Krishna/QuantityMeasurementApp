@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface UserHistoryRepository extends JpaRepository<UserHistoryRecord, Long> {
     List<UserHistoryRecord> findByUserIdOrderByRecordedAtDesc(Long userId);
+    java.util.Optional<UserHistoryRecord> findByIdAndUserId(Long id, Long userId);
 }

@@ -1,0 +1,8 @@
+spring:
+  mail:
+    host: localhost
+    port: 2525
+
+eureka:
+  client:
+    enabled: false
