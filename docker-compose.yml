@@ -1,7 +1,9 @@
 services:
   eureka-server:
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-eureka-server:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: eureka-server/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:eureka-server-latest
     ports:
       - "8761:8761"
     environment:
@@ -10,8 +12,10 @@ services:
       - qm-network
 
   admin-server:
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-admin-server:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: admin-server/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:admin-server-latest
     ports:
       - "9090:9090"
     environment:
@@ -23,8 +27,10 @@ services:
       - qm-network
 
   measurement-service:
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-measurement-service:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: measurement-service/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:measurement-service-latest
     ports:
       - "8081:8081"
     environment:
@@ -40,8 +46,10 @@ services:
       - qm-network
 
   user-service:
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-user-service:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:user-service-latest
     ports:
       - "8082:8082"
     environment:
@@ -62,8 +70,10 @@ services:
       - qm-network
 
   api-gateway:
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-api-gateway:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:api-gateway-latest
     ports:
       - "8080:8080"
     environment:
@@ -83,8 +93,10 @@ services:
       - qm-network
 
   email-service:
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-email-service:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: email-service/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:email-service-latest
     ports:
       - "8083:8083"
     environment:
@@ -101,8 +113,10 @@ services:
       - qm-network
 
   payment-service:
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-payment-service:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:payment-service-latest
     ports:
       - "8084:8084"
     environment:
@@ -124,8 +138,13 @@ services:
       - qm-network
 
   frontend:
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/qm-frontend:latest
-    pull_policy: always
+    build:
+      context: ../QuantityMeasurementApp-Frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        VITE_RAZORPAY_KEY_ID: ${VITE_RAZORPAY_KEY_ID:-}
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:frontend-latest
     ports:
       - "3000:80"
     depends_on:

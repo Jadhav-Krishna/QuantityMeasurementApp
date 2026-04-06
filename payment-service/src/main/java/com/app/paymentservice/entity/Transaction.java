@@ -23,6 +23,8 @@ public class Transaction {
 
     private long amountPaise;
     private int creditsToAdd;
+    private Long invoiceId;
+    private String invoiceNumber;
 
     @Enumerated(EnumType.STRING)
     private Status status;
@@ -57,6 +59,10 @@ public class Transaction {
     public void setAmountPaise(long amountPaise) { this.amountPaise = amountPaise; }
     public int getCreditsToAdd() { return creditsToAdd; }
     public void setCreditsToAdd(int creditsToAdd) { this.creditsToAdd = creditsToAdd; }
+    public Long getInvoiceId() { return invoiceId; }
+    public void setInvoiceId(Long invoiceId) { this.invoiceId = invoiceId; }
+    public String getInvoiceNumber() { return invoiceNumber; }
+    public void setInvoiceNumber(String invoiceNumber) { this.invoiceNumber = invoiceNumber; }
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }
     public Instant getCreatedAt() { return createdAt; }

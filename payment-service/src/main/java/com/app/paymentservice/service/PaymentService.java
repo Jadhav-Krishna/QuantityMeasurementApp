@@ -8,7 +8,9 @@ import com.app.paymentservice.dto.PaymentConfigResponse;
 import com.app.paymentservice.dto.RechargeEmailRequest;
 import com.app.paymentservice.dto.TransactionResponse;
 import com.app.paymentservice.dto.VerifyPaymentRequest;
+import com.app.paymentservice.entity.Invoice;
 import com.app.paymentservice.entity.Transaction;
+import com.app.paymentservice.repository.InvoiceRepository;
 import com.app.paymentservice.repository.TransactionRepository;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
@@ -25,6 +27,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 @Service
 public class PaymentService {
@@ -33,6 +37,7 @@ public class PaymentService {
 
     private final RazorpayClient razorpayClient;
     private final TransactionRepository transactionRepository;
+    private final InvoiceRepository invoiceRepository;
     private final UserServiceClient userServiceClient;
     private final EmailServiceClient emailServiceClient;
 
@@ -52,10 +57,12 @@ public class PaymentService {
 
     public PaymentService(RazorpayClient razorpayClient,
                           TransactionRepository transactionRepository,
+                          InvoiceRepository invoiceRepository,
                           UserServiceClient userServiceClient,
                           EmailServiceClient emailServiceClient) {
         this.razorpayClient = razorpayClient;
         this.transactionRepository = transactionRepository;
+        this.invoiceRepository = invoiceRepository;
         this.userServiceClient = userServiceClient;
         this.emailServiceClient = emailServiceClient;
     }
@@ -122,15 +129,24 @@ public class PaymentService {
             log.error("Failed to add credits for user {}: {}", saved.getUserId(), e.getMessage());
         }
 
+        Invoice invoice = createInvoice(saved);
+        saved.setInvoiceId(invoice.getId());
+        saved.setInvoiceNumber(invoice.getInvoiceNumber());
+        saved = transactionRepository.save(saved);
+
         // Send bill email (best-effort)
         try {
             emailServiceClient.sendRechargeSuccessEmail(new RechargeEmailRequest(
                     saved.getUserEmail(),
                     saved.getUserName(),
+                    saved.getUserId(),
                     saved.getCreditsToAdd(),
                     updatedCredits,
                     saved.getAmountPaise(),
                     saved.getRazorpayPaymentId(),
+                    saved.getRazorpayOrderId(),
+                    invoice.getId(),
+                    invoice.getInvoiceNumber(),
                     Instant.now()
             ));
         } catch (Exception e) {
@@ -166,8 +182,28 @@ public class PaymentService {
     private TransactionResponse toResponse(Transaction tx) {
         return new TransactionResponse(
                 tx.getId(), tx.getUserId(), tx.getRazorpayOrderId(),
-                tx.getRazorpayPaymentId(), tx.getAmountPaise(),
+                tx.getRazorpayPaymentId(), tx.getInvoiceId(), tx.getInvoiceNumber(), tx.getAmountPaise(),
                 tx.getCreditsToAdd(), tx.getStatus(), tx.getCreatedAt()
         );
+    }
+
+    private Invoice createInvoice(Transaction transaction) {
+        return invoiceRepository.findByTransactionId(transaction.getId())
+                .orElseGet(() -> {
+                    Invoice invoice = new Invoice();
+                    invoice.setInvoiceNumber(generateInvoiceNumber());
+                    invoice.setUserId(transaction.getUserId());
+                    invoice.setTransactionId(transaction.getId());
+                    invoice.setUserEmail(transaction.getUserEmail());
+                    invoice.setUserName(transaction.getUserName());
+                    invoice.setAmountPaise(transaction.getAmountPaise());
+                    invoice.setCreditsAdded(transaction.getCreditsToAdd());
+                    return invoiceRepository.save(invoice);
+                });
+    }
+
+    private String generateInvoiceNumber() {
+        return "INV-" + Instant.now().toString().substring(0, 10).replace("-", "")
+                + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
     }
 }

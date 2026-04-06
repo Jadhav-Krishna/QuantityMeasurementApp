@@ -8,6 +8,8 @@ public record TransactionResponse(
         Long userId,
         String razorpayOrderId,
         String razorpayPaymentId,
+        Long invoiceId,
+        String invoiceNumber,
         long amountPaise,
         int creditsAdded,
         Transaction.Status status,
