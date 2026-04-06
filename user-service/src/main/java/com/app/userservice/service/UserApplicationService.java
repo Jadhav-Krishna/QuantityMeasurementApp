@@ -4,6 +4,7 @@ import com.app.userservice.client.EmailServiceClient;
 import com.app.userservice.dto.CreditExhaustedEmailRequest;
 import com.app.userservice.dto.CreateUserRequest;
 import com.app.userservice.dto.LoginEmailRequest;
+import com.app.userservice.dto.SignupEmailRequest;
 import com.app.userservice.dto.UserHistoryRequest;
 import com.app.userservice.dto.UserHistoryResponse;
 import com.app.userservice.dto.UserResponse;
@@ -11,6 +12,8 @@ import com.app.userservice.entity.UserHistoryRecord;
 import com.app.userservice.entity.UserProfile;
 import com.app.userservice.repository.UserHistoryRepository;
 import com.app.userservice.repository.UserProfileRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +23,8 @@ import java.util.Optional;
 
 @Service
 public class UserApplicationService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserApplicationService.class);
 
     private final UserProfileRepository userProfileRepository;
     private final UserHistoryRepository userHistoryRepository;
@@ -87,10 +92,7 @@ public class UserApplicationService {
 
         UserProfile saved = userProfileRepository.save(user);
 
-        // Send login email (best-effort)
-        try {
-            emailServiceClient.sendLoginEmail(new LoginEmailRequest(saved.getEmail(), saved.getName()));
-        } catch (Exception ignored) {}
+        sendLoginEmail(saved);
 
         return saved;
     }
@@ -109,7 +111,9 @@ public class UserApplicationService {
             user.setAuthProvider(UserProfile.AuthProvider.HYBRID.name());
             user.setLastLoginAt(Instant.now());
             user.setEnabled(true);
-            return userProfileRepository.save(user);
+            UserProfile saved = userProfileRepository.save(user);
+            sendSignupEmail(saved);
+            return saved;
         }
 
         UserProfile profile = new UserProfile();
@@ -121,7 +125,9 @@ public class UserApplicationService {
         profile.setRole(UserProfile.Role.USER.name());
         profile.setEnabled(true);
         profile.setLastLoginAt(Instant.now());
-        return userProfileRepository.save(profile);
+        UserProfile saved = userProfileRepository.save(profile);
+        sendSignupEmail(saved);
+        return saved;
     }
 
     public Optional<UserProfile> findByGoogleId(String googleId) {
@@ -134,7 +140,9 @@ public class UserApplicationService {
 
     public UserProfile updateLastLogin(UserProfile user) {
         user.setLastLoginAt(Instant.now());
-        return userProfileRepository.save(user);
+        UserProfile saved = userProfileRepository.save(user);
+        sendLoginEmail(saved);
+        return saved;
     }
 
     public UserResponse getUser(Long userId) {
@@ -201,7 +209,9 @@ public class UserApplicationService {
             try {
                 emailServiceClient.sendCreditExhaustedEmail(
                         new CreditExhaustedEmailRequest(user.getEmail(), user.getName()));
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                log.warn("Failed to send credit exhausted email for user {}: {}", user.getId(), e.getMessage());
+            }
             throw new IllegalStateException("No credits remaining. Please recharge.");
         }
         user.setCredits(user.getCredits() - 1);
@@ -241,5 +251,21 @@ public class UserApplicationService {
                 record.getMessage(),
                 record.getRecordedAt()
         );
+    }
+
+    private void sendLoginEmail(UserProfile user) {
+        try {
+            emailServiceClient.sendLoginEmail(new LoginEmailRequest(user.getEmail(), user.getName()));
+        } catch (Exception e) {
+            log.warn("Failed to send login email for user {}: {}", user.getId(), e.getMessage());
+        }
+    }
+
+    private void sendSignupEmail(UserProfile user) {
+        try {
+            emailServiceClient.sendSignupEmail(new SignupEmailRequest(user.getEmail(), user.getName()));
+        } catch (Exception e) {
+            log.warn("Failed to send signup email for user {}: {}", user.getId(), e.getMessage());
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.app.emailservice.controller;
 import com.app.emailservice.dto.CreditExhaustedEmailRequest;
 import com.app.emailservice.dto.LoginEmailRequest;
 import com.app.emailservice.dto.RechargeSuccessEmailRequest;
+import com.app.emailservice.dto.SignupEmailRequest;
 import com.app.emailservice.service.EmailService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +24,12 @@ public class EmailController {
     @PostMapping("/login")
     public ResponseEntity<Void> sendLoginEmail(@RequestBody LoginEmailRequest request) {
         emailService.sendLoginEmail(request);
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/signup")
+    public ResponseEntity<Void> sendSignupEmail(@RequestBody SignupEmailRequest request) {
+        emailService.sendSignupEmail(request);
         return ResponseEntity.accepted().build();
     }
 
