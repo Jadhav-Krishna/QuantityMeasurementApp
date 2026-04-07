@@ -146,7 +146,7 @@ services:
         VITE_RAZORPAY_KEY_ID: ${VITE_RAZORPAY_KEY_ID:-}
     image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:frontend-latest
     ports:
-      - "3000:80"
+      - "80:80"
     depends_on:
       api-gateway:
         condition: service_started
