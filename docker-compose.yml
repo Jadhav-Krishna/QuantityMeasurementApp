@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: eureka-server/Dockerfile
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:eureka-server-latest
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:eureka-server-${IMAGE_TAG:-latest}
     ports:
       - "8761:8761"
     environment:
@@ -15,7 +15,7 @@ services:
     build:
       context: .
       dockerfile: admin-server/Dockerfile
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:admin-server-latest
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:admin-server-${IMAGE_TAG:-latest}
     ports:
       - "9090:9090"
     environment:
@@ -30,7 +30,7 @@ services:
     build:
       context: .
       dockerfile: measurement-service/Dockerfile
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:measurement-service-latest
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:measurement-service-${IMAGE_TAG:-latest}
     ports:
       - "8081:8081"
     environment:
@@ -49,7 +49,7 @@ services:
     build:
       context: .
       dockerfile: user-service/Dockerfile
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:user-service-latest
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:user-service-${IMAGE_TAG:-latest}
     ports:
       - "8082:8082"
     environment:
@@ -73,7 +73,7 @@ services:
     build:
       context: .
       dockerfile: api-gateway/Dockerfile
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:api-gateway-latest
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:api-gateway-${IMAGE_TAG:-latest}
     ports:
       - "8080:8080"
     environment:
@@ -96,7 +96,7 @@ services:
     build:
       context: .
       dockerfile: email-service/Dockerfile
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:email-service-latest
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:email-service-${IMAGE_TAG:-latest}
     ports:
       - "8083:8083"
     environment:
@@ -116,7 +116,7 @@ services:
     build:
       context: .
       dockerfile: payment-service/Dockerfile
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:payment-service-latest
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:payment-service-${IMAGE_TAG:-latest}
     ports:
       - "8084:8084"
     environment:
@@ -144,7 +144,7 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
         VITE_RAZORPAY_KEY_ID: ${VITE_RAZORPAY_KEY_ID:-}
-    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:frontend-latest
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:frontend-${IMAGE_TAG:-latest}
     ports:
       - "80:80"
     depends_on:

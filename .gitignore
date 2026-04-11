@@ -7,6 +7,11 @@
 !**/src/test/**/target/
 /target/**/generated-sources/
 
+# Local environment
+.env
+.env.*
+!.env.example
+
 # Maven
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
