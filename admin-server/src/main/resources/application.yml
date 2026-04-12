@@ -1,0 +1,47 @@
+server:
+  port: 9090
+
+spring:
+  application:
+    name: admin-server
+  boot:
+    admin:
+      discovery:
+        ignored-services: admin-server
+      ui:
+        title: Quantity Measurement Platform Monitor
+        external-views:
+          - label: Frontend
+            url: ${FRONTEND_PUBLIC_URL:http://localhost:3000}
+          - label: Eureka Dashboard
+            url: ${EUREKA_DASHBOARD_URL:http://localhost:8761}
+          - label: Gateway Swagger
+            url: ${API_GATEWAY_PUBLIC_URL:http://localhost:8080/swagger-ui.html}
+          - label: SonarQube
+            url: ${SONARQUBE_URL:http://localhost:9000}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env,loggers,threaddump,beans,mappings
+  endpoint:
+    health:
+      show-details: always
+
+info:
+  app:
+    name: admin-server
+    description: Centralized monitoring dashboard for the Quantity Measurement platform
+    version: 1.0.0

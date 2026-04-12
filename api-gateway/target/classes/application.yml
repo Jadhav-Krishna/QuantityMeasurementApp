@@ -1,0 +1,148 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: auth-route
+          uri: lb://user-service
+          predicates:
+            - Path=/auth/**
+        - id: oauth2-route
+          uri: lb://user-service
+          predicates:
+            - Path=/oauth2/**
+        - id: login-route
+          uri: lb://user-service
+          predicates:
+            - Path=/login/**
+        - id: measurement-v1-route
+          uri: lb://measurement-service
+          predicates:
+            - Path=/api/v1/quantities/**
+        - id: measurement-route
+          uri: lb://measurement-service
+          predicates:
+            - Path=/api/convert/**
+        - id: measurement-history-route
+          uri: lb://measurement-service
+          predicates:
+            - Path=/api/measurements/**
+        - id: user-route
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**
+        - id: payment-route
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payments/**
+        - id: email-route
+          uri: lb://email-service
+          predicates:
+            - Path=/api/emails/**
+        - id: measurement-service-docs-route
+          uri: lb://measurement-service
+          predicates:
+            - Path=/v3/api-docs/measurement-service
+          filters:
+            - SetPath=/v3/api-docs
+        - id: user-service-docs-route
+          uri: lb://user-service
+          predicates:
+            - Path=/v3/api-docs/user-service
+          filters:
+            - SetPath=/v3/api-docs
+        - id: email-service-docs-route
+          uri: lb://email-service
+          predicates:
+            - Path=/v3/api-docs/email-service
+          filters:
+            - SetPath=/v3/api-docs
+        - id: payment-service-docs-route
+          uri: lb://payment-service
+          predicates:
+            - Path=/v3/api-docs/payment-service
+          filters:
+            - SetPath=/v3/api-docs
+        - id: measurement-service-actuator-route
+          uri: lb://measurement-service
+          predicates:
+            - Path=/actuator/measurement-service/**
+          filters:
+            - RewritePath=/actuator/measurement-service/?(?<segment>.*), /actuator/$\{segment}
+        - id: user-service-actuator-route
+          uri: lb://user-service
+          predicates:
+            - Path=/actuator/user-service/**
+          filters:
+            - RewritePath=/actuator/user-service/?(?<segment>.*), /actuator/$\{segment}
+        - id: email-service-actuator-route
+          uri: lb://email-service
+          predicates:
+            - Path=/actuator/email-service/**
+          filters:
+            - RewritePath=/actuator/email-service/?(?<segment>.*), /actuator/$\{segment}
+        - id: payment-service-actuator-route
+          uri: lb://payment-service
+          predicates:
+            - Path=/actuator/payment-service/**
+          filters:
+            - RewritePath=/actuator/payment-service/?(?<segment>.*), /actuator/$\{segment}
+        - id: admin-server-actuator-route
+          uri: lb://admin-server
+          predicates:
+            - Path=/actuator/admin-server/**
+          filters:
+            - RewritePath=/actuator/admin-server/?(?<segment>.*), /actuator/$\{segment}
+        - id: eureka-server-actuator-route
+          uri: lb://eureka-server
+          predicates:
+            - Path=/actuator/eureka-server/**
+          filters:
+            - RewritePath=/actuator/eureka-server/?(?<segment>.*), /actuator/$\{segment}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: api-gateway
+        url: /v3/api-docs
+      - name: measurement-service
+        url: /v3/api-docs/measurement-service
+      - name: user-service
+        url: /v3/api-docs/user-service
+      - name: email-service
+        url: /v3/api-docs/email-service
+      - name: payment-service
+        url: /v3/api-docs/payment-service
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,metrics,env,loggers,threaddump,beans,mappings
+  endpoint:
+    health:
+      show-details: always
+
+info:
+  app:
+    name: api-gateway
+    description: Edge gateway and aggregated Swagger UI for the Quantity Measurement platform
+    version: 1.0.0

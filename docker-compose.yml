@@ -1,0 +1,190 @@
+services:
+  sonarqube-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${SONARQUBE_DB_NAME:-sonarqube}
+      POSTGRES_USER: ${SONARQUBE_DB_USERNAME:-sonarqube}
+      POSTGRES_PASSWORD: ${SONARQUBE_DB_PASSWORD:-sonarqube}
+    volumes:
+      - sonarqube-db-data:/var/lib/postgresql/data
+    networks:
+      - qm-network
+
+  sonarqube:
+    image: sonarqube:lts-community
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/${SONARQUBE_DB_NAME:-sonarqube}
+      SONAR_JDBC_USERNAME: ${SONARQUBE_DB_USERNAME:-sonarqube}
+      SONAR_JDBC_PASSWORD: ${SONARQUBE_DB_PASSWORD:-sonarqube}
+    depends_on:
+      sonarqube-db:
+        condition: service_started
+    networks:
+      - qm-network
+
+  eureka-server:
+    build:
+      context: .
+      dockerfile: eureka-server/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:eureka-server-${IMAGE_TAG:-latest}
+    ports:
+      - "8761:8761"
+    environment:
+      SPRING_BOOT_ADMIN_CLIENT_URL: http://admin-server:9090
+    networks:
+      - qm-network
+
+  admin-server:
+    build:
+      context: .
+      dockerfile: admin-server/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:admin-server-${IMAGE_TAG:-latest}
+    ports:
+      - "9090:9090"
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      FRONTEND_PUBLIC_URL: ${FRONTEND_PUBLIC_URL:-http://localhost:3000}
+      EUREKA_DASHBOARD_URL: ${EUREKA_DASHBOARD_URL:-http://localhost:8761}
+      API_GATEWAY_PUBLIC_URL: ${API_GATEWAY_PUBLIC_URL:-http://localhost:8080/swagger-ui.html}
+      SONARQUBE_URL: ${SONARQUBE_URL:-http://localhost:9000}
+    depends_on:
+      eureka-server:
+        condition: service_started
+    networks:
+      - qm-network
+
+  measurement-service:
+    build:
+      context: .
+      dockerfile: measurement-service/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:measurement-service-${IMAGE_TAG:-latest}
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: ${MEASUREMENT_DATASOURCE_URL}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_DATASOURCE_USERNAME: ${MEASUREMENT_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${MEASUREMENT_DATASOURCE_PASSWORD}
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_started
+    networks:
+      - qm-network
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:user-service-${IMAGE_TAG:-latest}
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      APP_REDIRECT_URI: ${APP_REDIRECT_URI:-http://localhost:3000/auth}
+      APP_OAUTH2_BASE_URI: ${APP_OAUTH2_BASE_URI:-http://localhost:3000}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_started
+    networks:
+      - qm-network
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:api-gateway-${IMAGE_TAG:-latest}
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_started
+      user-service:
+        condition: service_started
+      measurement-service:
+        condition: service_started
+      email-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+    networks:
+      - qm-network
+
+  email-service:
+    build:
+      context: .
+      dockerfile: email-service/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:email-service-${IMAGE_TAG:-latest}
+    ports:
+      - "8083:8083"
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM:-noreply@quantitymeasurement.app}
+    depends_on:
+      eureka-server:
+        condition: service_started
+    networks:
+      - qm-network
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:payment-service-${IMAGE_TAG:-latest}
+    ports:
+      - "8084:8084"
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      PAYMENT_DATASOURCE_URL: ${PAYMENT_DATASOURCE_URL}
+      PAYMENT_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      PAYMENT_DATASOURCE_USERNAME: ${PAYMENT_DATASOURCE_USERNAME}
+      PAYMENT_DATASOURCE_PASSWORD: ${PAYMENT_DATASOURCE_PASSWORD}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+    depends_on:
+      eureka-server:
+        condition: service_started
+      user-service:
+        condition: service_started
+      email-service:
+        condition: service_started
+    networks:
+      - qm-network
+
+  frontend:
+    build:
+      context: ../QuantityMeasurementApp-Frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        VITE_RAZORPAY_KEY_ID: ${VITE_RAZORPAY_KEY_ID:-}
+    image: ${DOCKERHUB_USERNAME:-asynchronouskrishna}/${DOCKERHUB_REPOSITORY:-quantitymeasurementapp}:frontend-${IMAGE_TAG:-latest}
+    ports:
+      - "80:80"
+    depends_on:
+      api-gateway:
+        condition: service_started
+    networks:
+      - qm-network
+
+networks:
+  qm-network:
+    driver: bridge
+
+volumes:
+  sonarqube-db-data:

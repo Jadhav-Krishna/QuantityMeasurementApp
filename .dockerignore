@@ -1,0 +1,43 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Maven
+target/
+**/target/
+!admin-server/target/*.jar
+!api-gateway/target/*.jar
+!eureka-server/target/*.jar
+!measurement-service/target/*.jar
+!user-service/target/*.jar
+!email-service/target/*.jar
+!payment-service/target/*.jar
+.m2/
+
+# Node/Frontend (not needed for backend builds)
+node_modules/
+dist/
+build/
+*.log
+
+# Docker
+.docker
+Dockerfile*
+docker-compose*.yml
+
+# Documentation
+README.md
+*.md
+
+# Environment files (for safety, but will be injected at runtime)
+.env
+.env.local
