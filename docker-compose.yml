@@ -1,6 +1,5 @@
 services:
   sonarqube-db:
-    profiles: ["quality"]
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: ${SONARQUBE_DB_NAME:-sonarqube}
@@ -12,7 +11,6 @@ services:
       - qm-network
 
   sonarqube:
-    profiles: ["quality"]
     image: sonarqube:lts-community
     ports:
       - "9000:9000"
@@ -47,6 +45,10 @@ services:
       - "9090:9090"
     environment:
       EUREKA_URL: http://eureka-server:8761/eureka/
+      FRONTEND_PUBLIC_URL: ${FRONTEND_PUBLIC_URL:-http://localhost:3000}
+      EUREKA_DASHBOARD_URL: ${EUREKA_DASHBOARD_URL:-http://localhost:8761}
+      API_GATEWAY_PUBLIC_URL: ${API_GATEWAY_PUBLIC_URL:-http://localhost:8080/swagger-ui.html}
+      SONARQUBE_URL: ${SONARQUBE_URL:-http://localhost:9000}
     depends_on:
       eureka-server:
         condition: service_started
