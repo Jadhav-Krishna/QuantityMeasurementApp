@@ -10,39 +10,49 @@ pipeline {
     }
 
     parameters {
-        booleanParam(name: 'RUN_SONARQUBE', defaultValue: false, description: 'Run SonarQube analysis')
-        booleanParam(name: 'BUILD_DOCKER_IMAGES', defaultValue: true, description: 'Build Docker images for all backend services')
-        booleanParam(name: 'PUSH_DOCKER_IMAGES', defaultValue: true, description: 'Push Docker images to Docker Hub')
-        booleanParam(name: 'DEPLOY_SERVICES', defaultValue: false, description: 'Use only on a deployment host; keep false for local Jenkins')
+        booleanParam(name: 'RUN_SONARQUBE',        defaultValue: false, description: 'Run SonarQube analysis')
+        booleanParam(name: 'BUILD_DOCKER_IMAGES',  defaultValue: true,  description: 'Build Docker images')
+        booleanParam(name: 'PUSH_DOCKER_IMAGES',   defaultValue: true,  description: 'Push Docker images to Docker Hub')
+        booleanParam(name: 'DEPLOY_TO_EC2',        defaultValue: false, description: 'SSH into EC2 and redeploy all services')
     }
 
     environment {
-        MAVEN_CMD = 'mvn -B -ntp'
+        MAVEN_CMD              = 'mvn -B -ntp'
         DOCKERHUB_CREDENTIALS_ID = 'dockerhub-credentials'
-        DOCKERHUB_USERNAME = 'asynchronouskrishna'
-        DOCKERHUB_REPOSITORY = 'quantitymeasurementapp'
-        SONARQUBE_SERVER = 'sonarqube-server'
-        EMAIL_RECIPIENTS = 'kj4241808@gmail.com'
-        BACKEND_SERVICES = 'eureka-server admin-server measurement-service user-service email-service payment-service api-gateway'
-        IMAGE_TAG = "${BUILD_NUMBER}"
-        COMPOSE_PROJECT_NAME = 'quantity-measurement'
+        DOCKERHUB_USERNAME     = 'asynchronouskrishna'
+        DOCKERHUB_REPOSITORY   = 'quantitymeasurementapp'
+        SONARQUBE_SERVER       = 'sonarqube-server'
+        EMAIL_RECIPIENTS       = 'kj4241808@gmail.com'
+        BACKEND_SERVICES       = 'eureka-server admin-server measurement-service user-service email-service payment-service api-gateway'
+        IMAGE_TAG              = "${BUILD_NUMBER}"
+        COMPOSE_PROJECT_NAME   = 'quantity-measurement'
+        // Jenkins credential IDs — create these in Jenkins > Credentials
+        EC2_SSH_CREDENTIALS_ID = 'ec2-ssh-key'       // SSH private key credential
+        EC2_HOST               = credentials('ec2-host')  // Secret text: your EC2 public IP/hostname
+        EC2_USER               = 'ubuntu'             // Change to 'ec2-user' for Amazon Linux
+        FRONTEND_REPO_URL      = 'https://github.com/asynchronouskrishna/QuantityMeasurementApp-Frontend.git'
+        FRONTEND_REPO_DIR      = 'QuantityMeasurementApp-Frontend'
     }
 
     stages {
+
+        // ── 1. Checkout both repos ────────────────────────────────────────────
         stage('Checkout') {
-            options {
-                retry(2)
-            }
+            options { retry(2) }
             steps {
                 cleanWs()
-                // Use Jenkins SCM configuration to avoid a redundant git clone definition in the pipeline.
+                // Backend repo — uses the SCM config from the Jenkins job
                 checkout scm
+                // Frontend repo — cloned into a sub-folder alongside the backend
+                dir("${FRONTEND_REPO_DIR}") {
+                    git url: "${FRONTEND_REPO_URL}", branch: 'main', credentialsId: ''
+                }
             }
         }
 
+        // ── 2. Validate tools ─────────────────────────────────────────────────
         stage('Validate Tooling') {
             steps {
-                // Fail fast if the Jenkins Windows agent is missing Java, Maven, or Docker.
                 bat 'java -version'
                 bat 'mvn -version'
                 bat 'docker version'
@@ -50,12 +60,10 @@ pipeline {
             }
         }
 
+        // ── 3. Backend tests ──────────────────────────────────────────────────
         stage('Test') {
-            options {
-                retry(2)
-            }
+            options { retry(2) }
             steps {
-                // Run unit tests for the Maven parent project and all backend modules.
                 bat "${MAVEN_CMD} clean test"
             }
             post {
@@ -65,12 +73,10 @@ pipeline {
             }
         }
 
+        // ── 4. Backend package ────────────────────────────────────────────────
         stage('Build') {
-            options {
-                retry(2)
-            }
+            options { retry(2) }
             steps {
-                // Package all Spring Boot services after tests have already passed.
                 bat "${MAVEN_CMD} package -DskipTests"
             }
             post {
@@ -80,28 +86,25 @@ pipeline {
             }
         }
 
+        // ── 5. SonarQube (optional) ───────────────────────────────────────────
         stage('SonarQube') {
-            when {
-                expression { return params.RUN_SONARQUBE }
-            }
+            when { expression { return params.RUN_SONARQUBE } }
             steps {
-                // Backend-only repository analysis. Jenkins must point `sonarqube-server` to a reachable SonarQube URL.
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
                     bat "${MAVEN_CMD} sonar:sonar"
                 }
             }
         }
 
+        // ── 6. Docker Build ───────────────────────────────────────────────────
         stage('Docker Build') {
             when {
-                expression { return params.BUILD_DOCKER_IMAGES || params.PUSH_DOCKER_IMAGES || params.DEPLOY_SERVICES }
+                expression { return params.BUILD_DOCKER_IMAGES || params.PUSH_DOCKER_IMAGES || params.DEPLOY_TO_EC2 }
             }
-            options {
-                retry(2)
-            }
+            options { retry(2) }
             steps {
                 script {
-                    // Build each backend image with both an immutable build tag and a rolling latest tag.
+                    // Build all backend images
                     env.BACKEND_SERVICES.tokenize(' ').each { service ->
                         bat """
                             docker build -f ${service}\\Dockerfile ^
@@ -109,81 +112,70 @@ pipeline {
                               -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest .
                         """.stripIndent().trim()
                     }
+                    // Build frontend image from its own repo folder
+                    bat """
+                        docker build ^
+                          --build-arg VITE_API_BASE_URL="" ^
+                          --build-arg VITE_RAZORPAY_KEY_ID="" ^
+                          -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG} ^
+                          -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest ^
+                          ${env.FRONTEND_REPO_DIR}
+                    """.stripIndent().trim()
                 }
             }
         }
 
+        // ── 7. Docker Login ───────────────────────────────────────────────────
         stage('Docker Login') {
             when {
-                expression { return params.PUSH_DOCKER_IMAGES || params.DEPLOY_SERVICES }
+                expression { return params.PUSH_DOCKER_IMAGES || params.DEPLOY_TO_EC2 }
             }
             steps {
-                // Authenticate securely to Docker Hub with Jenkins-managed credentials.
                 withCredentials([usernamePassword(
                     credentialsId: env.DOCKERHUB_CREDENTIALS_ID,
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat '''
-@echo off
-echo %DOCKER_PASS%| docker login -u %DOCKER_USER% --password-stdin
-'''
+                    bat '@echo off\necho %DOCKER_PASS%| docker login -u %DOCKER_USER% --password-stdin'
                 }
             }
         }
 
+        // ── 8. Docker Push ────────────────────────────────────────────────────
         stage('Docker Push') {
-            when {
-                expression { return params.PUSH_DOCKER_IMAGES }
-            }
-            options {
-                retry(2)
-            }
+            when { expression { return params.PUSH_DOCKER_IMAGES } }
+            options { retry(2) }
             steps {
                 script {
-                    // Push both immutable and latest tags so deployments can choose stable or rolling releases.
                     env.BACKEND_SERVICES.tokenize(' ').each { service ->
                         bat "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-${env.IMAGE_TAG}"
                         bat "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest"
                     }
+                    bat "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG}"
+                    bat "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest"
                 }
             }
         }
 
-        stage('Deploy') {
-            when {
-                expression { return params.DEPLOY_SERVICES }
-            }
-            options {
-                retry(2)
-            }
+        // ── 9. Deploy to EC2 via SSH ──────────────────────────────────────────
+        stage('Deploy to EC2') {
+            when { expression { return params.DEPLOY_TO_EC2 } }
             steps {
-                // This stage is only valid on the deployment host itself.
-                // For your local Jenkins setup, keep DEPLOY_SERVICES=false and deploy from EC2 separately.
-                bat '''
+                // Requires the "SSH Agent" Jenkins plugin and an SSH key credential
+                sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
+                    // Copy the docker-compose.yml to EC2, then pull & restart all services
+                    bat """
 @echo off
-setlocal
-set DOCKERHUB_USERNAME=%DOCKERHUB_USERNAME%
-set DOCKERHUB_REPOSITORY=%DOCKERHUB_REPOSITORY%
-set IMAGE_TAG=%IMAGE_TAG%
-set COMPOSE_PROJECT_NAME=%COMPOSE_PROJECT_NAME%
-
-echo Attempting to stop any existing backend deployment...
-docker compose -p %COMPOSE_PROJECT_NAME% down --remove-orphans
-if errorlevel 1 (
-    echo No existing deployment was running or docker compose down returned a non-fatal error. Continuing...
-)
-
-echo Pulling backend images for tag %IMAGE_TAG%...
-docker compose -p %COMPOSE_PROJECT_NAME% pull eureka-server admin-server measurement-service user-service email-service payment-service api-gateway
-if errorlevel 1 exit /b 1
-
-echo Starting backend services...
-docker compose -p %COMPOSE_PROJECT_NAME% up -d --remove-orphans eureka-server admin-server measurement-service user-service email-service payment-service api-gateway
-if errorlevel 1 exit /b 1
-
-endlocal
-'''
+scp -o StrictHostKeyChecking=no docker-compose.yml %EC2_USER%@%EC2_HOST%:~/app/docker-compose.yml
+ssh -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "^
+  cd ~/app && ^
+  export IMAGE_TAG=${env.IMAGE_TAG} && ^
+  export DOCKERHUB_USERNAME=${env.DOCKERHUB_USERNAME} && ^
+  export DOCKERHUB_REPOSITORY=${env.DOCKERHUB_REPOSITORY} && ^
+  docker compose -p ${env.COMPOSE_PROJECT_NAME} pull && ^
+  docker compose -p ${env.COMPOSE_PROJECT_NAME} up -d --remove-orphans"
+"""
+                }
             }
         }
     }
@@ -193,38 +185,32 @@ endlocal
             emailext(
                 to: "${EMAIL_RECIPIENTS}",
                 subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: """Build and deployment completed successfully.
+                body: """Build completed successfully.
 
-Job: ${env.JOB_NAME}
-Build Number: ${env.BUILD_NUMBER}
-Build URL: ${env.BUILD_URL}
-Docker Repository: ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}
-Image Tag: ${env.IMAGE_TAG}
+Job:        ${env.JOB_NAME}
+Build:      ${env.BUILD_NUMBER}
+URL:        ${env.BUILD_URL}
+Image Tag:  ${env.IMAGE_TAG}
+Repository: ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}
 """
             )
         }
-
         failure {
             emailext(
                 to: "${EMAIL_RECIPIENTS}",
                 subject: "FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """Build or deployment failed.
 
-Job: ${env.JOB_NAME}
-Build Number: ${env.BUILD_NUMBER}
-Build URL: ${env.BUILD_URL}
+Job:   ${env.JOB_NAME}
+Build: ${env.BUILD_NUMBER}
+URL:   ${env.BUILD_URL}
 
-Review the Jenkins console log for the failed stage.
+Check the Jenkins console log for the failed stage.
 """
             )
         }
-
         always {
-            bat '''
-@echo off
-docker logout >nul 2>&1
-exit /b 0
-'''
+            bat '@echo off\ndocker logout >nul 2>&1\nexit /b 0'
             cleanWs(deleteDirs: true, notFailBuild: true)
         }
     }
