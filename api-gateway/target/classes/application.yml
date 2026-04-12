@@ -67,6 +67,42 @@ spring:
             - Path=/v3/api-docs/payment-service
           filters:
             - SetPath=/v3/api-docs
+        - id: measurement-service-actuator-route
+          uri: lb://measurement-service
+          predicates:
+            - Path=/actuator/measurement-service/**
+          filters:
+            - RewritePath=/actuator/measurement-service/?(?<segment>.*), /actuator/$\{segment}
+        - id: user-service-actuator-route
+          uri: lb://user-service
+          predicates:
+            - Path=/actuator/user-service/**
+          filters:
+            - RewritePath=/actuator/user-service/?(?<segment>.*), /actuator/$\{segment}
+        - id: email-service-actuator-route
+          uri: lb://email-service
+          predicates:
+            - Path=/actuator/email-service/**
+          filters:
+            - RewritePath=/actuator/email-service/?(?<segment>.*), /actuator/$\{segment}
+        - id: payment-service-actuator-route
+          uri: lb://payment-service
+          predicates:
+            - Path=/actuator/payment-service/**
+          filters:
+            - RewritePath=/actuator/payment-service/?(?<segment>.*), /actuator/$\{segment}
+        - id: admin-server-actuator-route
+          uri: lb://admin-server
+          predicates:
+            - Path=/actuator/admin-server/**
+          filters:
+            - RewritePath=/actuator/admin-server/?(?<segment>.*), /actuator/$\{segment}
+        - id: eureka-server-actuator-route
+          uri: lb://eureka-server
+          predicates:
+            - Path=/actuator/eureka-server/**
+          filters:
+            - RewritePath=/actuator/eureka-server/?(?<segment>.*), /actuator/$\{segment}
 
 springdoc:
   api-docs:

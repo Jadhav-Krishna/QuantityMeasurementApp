@@ -13,6 +13,14 @@
 
 # Maven
 target/
+**/target/
+!admin-server/target/*.jar
+!api-gateway/target/*.jar
+!eureka-server/target/*.jar
+!measurement-service/target/*.jar
+!user-service/target/*.jar
+!email-service/target/*.jar
+!payment-service/target/*.jar
 .m2/
 
 # Node/Frontend (not needed for backend builds)
