@@ -210,8 +210,10 @@ Check the Jenkins console log for the failed stage.
             )
         }
         always {
-            bat '@echo off\ndocker logout >nul 2>&1\nexit /b 0'
-            cleanWs(deleteDirs: true, notFailBuild: true)
+            node {
+                bat '@echo off\ndocker logout >nul 2>&1\nexit /b 0'
+                cleanWs(deleteDirs: true, notFailBuild: true)
+            }
         }
     }
 }
