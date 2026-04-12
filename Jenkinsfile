@@ -13,7 +13,7 @@ pipeline {
         booleanParam(name: 'RUN_SONARQUBE', defaultValue: false, description: 'Run SonarQube analysis')
         booleanParam(name: 'BUILD_DOCKER_IMAGES', defaultValue: true, description: 'Build Docker images for all backend services')
         booleanParam(name: 'PUSH_DOCKER_IMAGES', defaultValue: true, description: 'Push Docker images to Docker Hub')
-        booleanParam(name: 'DEPLOY_SERVICES', defaultValue: true, description: 'Deploy backend services with docker compose')
+        booleanParam(name: 'DEPLOY_SERVICES', defaultValue: false, description: 'Use only on a deployment host; keep false for local Jenkins')
     }
 
     environment {
@@ -85,7 +85,7 @@ pipeline {
                 expression { return params.RUN_SONARQUBE }
             }
             steps {
-                // Placeholder for SonarQube integration. Configure the named server in Jenkins before enabling.
+                // Backend-only repository analysis. Jenkins must point `sonarqube-server` to a reachable SonarQube URL.
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
                     bat "${MAVEN_CMD} sonar:sonar"
                 }
@@ -158,7 +158,8 @@ echo %DOCKER_PASS%| docker login -u %DOCKER_USER% --password-stdin
                 retry(2)
             }
             steps {
-                // Pull the tagged backend images and recreate only the backend services.
+                // This stage is only valid on the deployment host itself.
+                // For your local Jenkins setup, keep DEPLOY_SERVICES=false and deploy from EC2 separately.
                 bat '''
 @echo off
 setlocal
