@@ -22,7 +22,7 @@ pipeline {
         DOCKERHUB_USERNAME = 'asynchronouskrishna'
         DOCKERHUB_REPOSITORY = 'quantitymeasurementapp'
         SONARQUBE_SERVER = 'sonarqube-server'
-        EMAIL_RECIPIENTS = 'devops@example.com'
+        EMAIL_RECIPIENTS = 'kj4241808@gmail.com'
         BACKEND_SERVICES = 'eureka-server admin-server measurement-service user-service email-service payment-service api-gateway'
         IMAGE_TAG = "${BUILD_NUMBER}"
         COMPOSE_PROJECT_NAME = 'quantity-measurement'

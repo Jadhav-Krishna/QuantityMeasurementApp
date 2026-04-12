@@ -43,6 +43,47 @@ spring:
           uri: lb://email-service
           predicates:
             - Path=/api/emails/**
+        - id: measurement-service-docs-route
+          uri: lb://measurement-service
+          predicates:
+            - Path=/v3/api-docs/measurement-service
+          filters:
+            - SetPath=/v3/api-docs
+        - id: user-service-docs-route
+          uri: lb://user-service
+          predicates:
+            - Path=/v3/api-docs/user-service
+          filters:
+            - SetPath=/v3/api-docs
+        - id: email-service-docs-route
+          uri: lb://email-service
+          predicates:
+            - Path=/v3/api-docs/email-service
+          filters:
+            - SetPath=/v3/api-docs
+        - id: payment-service-docs-route
+          uri: lb://payment-service
+          predicates:
+            - Path=/v3/api-docs/payment-service
+          filters:
+            - SetPath=/v3/api-docs
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: api-gateway
+        url: /v3/api-docs
+      - name: measurement-service
+        url: /v3/api-docs/measurement-service
+      - name: user-service
+        url: /v3/api-docs/user-service
+      - name: email-service
+        url: /v3/api-docs/email-service
+      - name: payment-service
+        url: /v3/api-docs/payment-service
 
 eureka:
   client:
@@ -59,7 +100,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway,metrics,env,loggers,threaddump
+        include: health,info,gateway,metrics,env,loggers,threaddump,beans,mappings
   endpoint:
     health:
       show-details: always
+
+info:
+  app:
+    name: api-gateway
+    description: Edge gateway and aggregated Swagger UI for the Quantity Measurement platform
+    version: 1.0.0

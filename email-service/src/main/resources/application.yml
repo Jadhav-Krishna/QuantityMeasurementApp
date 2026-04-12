@@ -16,6 +16,12 @@ spring:
           starttls:
             enable: true
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
 eureka:
   client:
     service-url:
@@ -31,7 +37,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,env,loggers,threaddump,beans,mappings
   endpoint:
     health:
       show-details: always
@@ -39,3 +45,9 @@ management:
 app:
   mail:
     from: ${MAIL_FROM:noreply@quantitymeasurement.app}
+
+info:
+  app:
+    name: email-service
+    description: Notification and transactional email service
+    version: 1.0.0

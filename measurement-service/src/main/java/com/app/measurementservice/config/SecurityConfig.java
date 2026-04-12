@@ -38,6 +38,9 @@ public class SecurityConfig {
                     "/api/convert/**",
                     "/api/measurements/**",
                     "/actuator/**",
+                    "/v3/api-docs/**",
+                    "/swagger-ui.html",
+                    "/swagger-ui/**",
                     "/h2-console/**"
                 ).permitAll()
                 // History requires a logged-in user (JWT present)
