@@ -22,6 +22,12 @@ spring:
       circuitbreaker:
         enabled: true
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
 eureka:
   client:
     service-url:
@@ -37,7 +43,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,env,loggers,threaddump,beans,mappings
   endpoint:
     health:
       show-details: always
@@ -50,3 +56,9 @@ app:
   credits:
     per-recharge-unit: 5
     price-per-unit-paise: 100
+
+info:
+  app:
+    name: payment-service
+    description: Credit recharge and payment processing service
+    version: 1.0.0

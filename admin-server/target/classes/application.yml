@@ -12,11 +12,11 @@ spring:
         title: Quantity Measurement Platform Monitor
         external-views:
           - label: Frontend
-            url: http://localhost:3000
+            url: ${FRONTEND_PUBLIC_URL:http://localhost:3000}
           - label: Eureka Dashboard
-            url: http://localhost:8761
+            url: ${EUREKA_DASHBOARD_URL:http://localhost:8761}
           - label: Gateway Swagger
-            url: http://localhost:8080/swagger-ui.html
+            url: ${API_GATEWAY_PUBLIC_URL:http://localhost:8080/swagger-ui.html}
           - label: SonarQube
             url: ${SONARQUBE_URL:http://localhost:9000}
 
