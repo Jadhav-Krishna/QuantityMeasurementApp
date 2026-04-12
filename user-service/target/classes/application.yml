@@ -37,6 +37,12 @@ spring:
             user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
             user-name-attribute: sub
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
 eureka:
   client:
     service-url:
@@ -52,7 +58,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,env,loggers,threaddump
+        include: health,info,metrics,env,loggers,threaddump,beans,mappings
   endpoint:
     health:
       show-details: always
@@ -63,3 +69,9 @@ app:
   jwt:
     secret: ${APP_JWT_SECRET:}
     expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}
+
+info:
+  app:
+    name: user-service
+    description: User identity, OAuth, profile, and history service
+    version: 1.0.0
