@@ -136,9 +136,9 @@ ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.E
             }
             steps {
                 bat """
-                    @echo off
-                    ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "printf '%s' '${env.DOCKERHUB_ACCESS_TOKEN}' | docker login -u '${env.DOCKERHUB_USERNAME}' --password-stdin"
-                """
+@echo off
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "docker logout >/dev/null 2>&1 || true && docker login -u ${env.DOCKERHUB_USERNAME} -p ${env.DOCKERHUB_ACCESS_TOKEN}"
+"""
             }
         }
 
