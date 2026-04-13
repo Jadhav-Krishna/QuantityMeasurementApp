@@ -50,6 +50,16 @@ ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.E
             }
         }
 
+        stage('Install EC2 Tooling') {
+            options { retry(2) }
+            steps {
+                bat """
+@echo off
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "sudo apt-get update && sudo apt-get install -y openjdk-21-jdk maven docker.io docker-compose-v2 git curl && sudo systemctl enable docker && sudo systemctl start docker && sudo usermod -aG docker ${env.EC2_USER}"
+"""
+            }
+        }
+
         stage('Validate EC2 Tooling') {
             steps {
                 bat """
