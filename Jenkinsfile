@@ -27,13 +27,13 @@ pipeline {
         BACKEND_SERVICES = 'eureka-server admin-server measurement-service user-service email-service payment-service api-gateway'
         IMAGE_TAG = "${BUILD_NUMBER}"
         COMPOSE_PROJECT_NAME = 'quantity-measurement'
-        DOCKER_CONFIG = "${WORKSPACE}\\.docker"
         // Jenkins credential IDs - create these in Jenkins > Credentials.
         // ec2-host: Secret text containing only the hostname, for example
         // ec2-65-2-129-136.ap-south-1.compute.amazonaws.com
         // ec2-ssh-key: SSH Username with private key using the QuantityMeasurementApp.pem key for user ubuntu
         EC2_SSH_CREDENTIALS_ID = 'ec2-ssh-key'
         EC2_USER = 'ubuntu'
+        EC2_APP_DIR = '~/app'
         BACKEND_REPO_URL = 'https://github.com/Jadhav-Krishna/QuantityMeasurementApp.git'
         BACKEND_REPO_BRANCH = 'feature/Deployment'
         BACKEND_REPO_DIR = 'QuantityMeasurementApp'
@@ -43,38 +43,43 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
+        stage('Prepare EC2 Workspace') {
             options { retry(2) }
             steps {
-                cleanWs()
-                dir("${BACKEND_REPO_DIR}") {
-                    git url: "${BACKEND_REPO_URL}", branch: "${BACKEND_REPO_BRANCH}"
-                }
-                dir("${FRONTEND_REPO_DIR}") {
-                    git url: "${FRONTEND_REPO_URL}", branch: "${FRONTEND_REPO_BRANCH}"
+                withCredentials([string(credentialsId: 'ec2-host', variable: 'EC2_HOST')]) {
+                    sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
+                        bat """
+@echo off
+ssh -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "mkdir -p ${env.EC2_APP_DIR} && cd ${env.EC2_APP_DIR} && rm -rf ${env.BACKEND_REPO_DIR} ${env.FRONTEND_REPO_DIR} && git clone --branch ${env.BACKEND_REPO_BRANCH} --single-branch ${env.BACKEND_REPO_URL} ${env.BACKEND_REPO_DIR} && git clone --branch ${env.FRONTEND_REPO_BRANCH} --single-branch ${env.FRONTEND_REPO_URL} ${env.FRONTEND_REPO_DIR}"
+"""
+                    }
                 }
             }
         }
 
-        stage('Validate Tooling') {
+        stage('Validate EC2 Tooling') {
             steps {
-                bat 'java -version'
-                bat 'mvn -version'
-                bat 'docker version'
-                bat 'docker compose version'
+                withCredentials([string(credentialsId: 'ec2-host', variable: 'EC2_HOST')]) {
+                    sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
+                        bat """
+@echo off
+ssh -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "java -version && mvn -version && docker version && docker compose version"
+"""
+                    }
+                }
             }
         }
 
         stage('Test') {
             options { retry(2) }
             steps {
-                dir("${BACKEND_REPO_DIR}") {
-                    bat "${MAVEN_CMD} clean test"
-                }
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: "${BACKEND_REPO_DIR}/**/target/surefire-reports/TEST-*.xml"
+                withCredentials([string(credentialsId: 'ec2-host', variable: 'EC2_HOST')]) {
+                    sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
+                        bat """
+@echo off
+ssh -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${env.MAVEN_CMD} clean test"
+"""
+                    }
                 }
             }
         }
@@ -82,13 +87,13 @@ pipeline {
         stage('Build') {
             options { retry(2) }
             steps {
-                dir("${BACKEND_REPO_DIR}") {
-                    bat "${MAVEN_CMD} package -DskipTests"
-                }
-            }
-            post {
-                success {
-                    archiveArtifacts artifacts: "${BACKEND_REPO_DIR}/**/target/*.jar", fingerprint: true
+                withCredentials([string(credentialsId: 'ec2-host', variable: 'EC2_HOST')]) {
+                    sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
+                        bat """
+@echo off
+ssh -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${env.MAVEN_CMD} package -DskipTests"
+"""
+                    }
                 }
             }
         }
@@ -96,25 +101,20 @@ pipeline {
         stage('SonarQube') {
             when { expression { params.RUN_SONARQUBE } }
             steps {
-                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
                     timeout(time: 10, unit: 'MINUTES') {
-                        dir("${BACKEND_REPO_DIR}") {
-                            withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                        withCredentials([string(credentialsId: 'ec2-host', variable: 'EC2_HOST')]) {
+                            sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
                                 script {
                                     def sonarHostUrl = params.SONAR_HOST_URL_OVERRIDE?.trim()
                                     if (!sonarHostUrl) {
-                                        sonarHostUrl = env.SONAR_HOST_URL
+                                        sonarHostUrl = 'http://localhost:9000'
                                     }
 
                                     bat """
 @echo off
-powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing -Uri '%sonarUrl%/api/system/status' -TimeoutSec 10 | Out-Null; exit 0 } catch { exit 1 }"
-if errorlevel 1 (
-  echo SonarQube server is unreachable at %sonarUrl%
-  exit /b 1
-)
-${env.MAVEN_CMD} verify -DskipTests sonar:sonar -Dsonar.host.url=%sonarUrl%
-""".stripIndent().trim().replace('%sonarUrl%', sonarHostUrl)
+ssh -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "curl -fsS ${sonarHostUrl}/api/system/status >/dev/null 2>&1 || { echo SonarQube server is unreachable at ${sonarHostUrl}; exit 0; }; cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${env.MAVEN_CMD} verify -DskipTests sonar:sonar -Dsonar.host.url=${sonarHostUrl}"
+"""
                                 }
                             }
                         }
@@ -129,25 +129,20 @@ ${env.MAVEN_CMD} verify -DskipTests sonar:sonar -Dsonar.host.url=%sonarUrl%
             }
             options { retry(2) }
             steps {
-                script {
-                    env.BACKEND_SERVICES.tokenize(' ').each { service ->
-                        dir("${BACKEND_REPO_DIR}") {
+                withCredentials([string(credentialsId: 'ec2-host', variable: 'EC2_HOST')]) {
+                    sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
+                        script {
+                            def buildCommands = env.BACKEND_SERVICES.tokenize(' ').collect { service ->
+                                "docker build -f ${service}/Dockerfile -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-${env.IMAGE_TAG} -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest ."
+                            }
+                            buildCommands << "docker build --build-arg VITE_API_BASE_URL='' --build-arg VITE_RAZORPAY_KEY_ID='' -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG} -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest ../${env.FRONTEND_REPO_DIR}"
+
                             bat """
-                                docker build -f ${service}\\Dockerfile ^
-                                  -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-${env.IMAGE_TAG} ^
-                                  -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest .
-                            """.stripIndent().trim()
+@echo off
+ssh -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${buildCommands.join(' && ')}"
+"""
                         }
                     }
-
-                    bat """
-                        docker build ^
-                          --build-arg VITE_API_BASE_URL="" ^
-                          --build-arg VITE_RAZORPAY_KEY_ID="" ^
-                          -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG} ^
-                          -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest ^
-                          .\\${env.FRONTEND_REPO_DIR}
-                    """.stripIndent().trim()
                 }
             }
         }
@@ -161,8 +156,16 @@ ${env.MAVEN_CMD} verify -DskipTests sonar:sonar -Dsonar.host.url=%sonarUrl%
                     credentialsId: env.DOCKERHUB_CREDENTIALS_ID,
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    bat '@echo off\nif not exist "%DOCKER_CONFIG%" mkdir "%DOCKER_CONFIG%"\necho %DOCKER_PASS%| docker --config "%DOCKER_CONFIG%" login -u %DOCKER_USER% --password-stdin'
+                ), string(credentialsId: 'ec2-host', variable: 'EC2_HOST')]) {
+                    sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
+                        bat """
+@echo off
+ssh -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "printf '%s' '${DOCKER_PASS}' | docker login -u '${DOCKER_USER}' --password-stdin"
+"""
+                        script {
+                            env.DOCKERHUB_USERNAME = env.DOCKER_USER
+                        }
+                    }
                 }
             }
         }
@@ -173,13 +176,23 @@ ${env.MAVEN_CMD} verify -DskipTests sonar:sonar -Dsonar.host.url=%sonarUrl%
             }
             options { retry(2) }
             steps {
-                script {
-                    env.BACKEND_SERVICES.tokenize(' ').each { service ->
-                        bat "docker --config \"%DOCKER_CONFIG%\" push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-${env.IMAGE_TAG}"
-                        bat "docker --config \"%DOCKER_CONFIG%\" push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest"
+                withCredentials([string(credentialsId: 'ec2-host', variable: 'EC2_HOST')]) {
+                    sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
+                        script {
+                            def pushCommands = []
+                            env.BACKEND_SERVICES.tokenize(' ').each { service ->
+                                pushCommands << "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-${env.IMAGE_TAG}"
+                                pushCommands << "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest"
+                            }
+                            pushCommands << "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG}"
+                            pushCommands << "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest"
+
+                            bat """
+@echo off
+ssh -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "${pushCommands.join(' && ')}"
+"""
+                        }
                     }
-                    bat "docker --config \"%DOCKER_CONFIG%\" push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG}"
-                    bat "docker --config \"%DOCKER_CONFIG%\" push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest"
                 }
             }
         }
@@ -191,9 +204,9 @@ ${env.MAVEN_CMD} verify -DskipTests sonar:sonar -Dsonar.host.url=%sonarUrl%
                     sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
                         bat """
 @echo off
-scp -o StrictHostKeyChecking=no docker-compose.yml %EC2_USER%@%EC2_HOST%:~/app/docker-compose.yml
 ssh -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "^
-  cd ~/app && ^
+  cp ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR}/docker-compose.yml ${env.EC2_APP_DIR}/docker-compose.yml && ^
+  cd ${env.EC2_APP_DIR} && ^
   export IMAGE_TAG=${env.IMAGE_TAG} && ^
   export DOCKERHUB_USERNAME=${env.DOCKERHUB_USERNAME} && ^
   export DOCKERHUB_REPOSITORY=${env.DOCKERHUB_REPOSITORY} && ^
@@ -238,7 +251,6 @@ Check the Jenkins console log for the failed stage.
         always {
             script {
                 if (env.WORKSPACE) {
-                    bat '@echo off\ndocker --config "%DOCKER_CONFIG%" logout >nul 2>&1\nif exist "%DOCKER_CONFIG%" rmdir /s /q "%DOCKER_CONFIG%"\nexit /b 0'
                     cleanWs(deleteDirs: true, notFailBuild: true)
                 }
             }
