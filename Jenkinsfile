@@ -170,7 +170,7 @@ ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.E
             steps {
                 bat """
 @echo off
-ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "cp ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR}/docker-compose.yml ${env.EC2_APP_DIR}/docker-compose.yml && cd ${env.EC2_APP_DIR} && export IMAGE_TAG=${env.IMAGE_TAG} && export DOCKERHUB_USERNAME=${env.DOCKERHUB_USERNAME} && export DOCKERHUB_REPOSITORY=${env.DOCKERHUB_REPOSITORY} && docker compose -p ${env.COMPOSE_PROJECT_NAME} pull && docker compose -p ${env.COMPOSE_PROJECT_NAME} up -d --remove-orphans"
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "cp ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR}/docker-compose.yml ${env.EC2_APP_DIR}/docker-compose.yml && cd ${env.EC2_APP_DIR} && export IMAGE_TAG=${env.IMAGE_TAG} && export DOCKERHUB_USERNAME=${env.DOCKERHUB_USERNAME} && export DOCKERHUB_REPOSITORY=${env.DOCKERHUB_REPOSITORY} && docker compose -p ${env.COMPOSE_PROJECT_NAME} down --remove-orphans || true && docker compose -p ${env.COMPOSE_PROJECT_NAME} pull && docker compose -p ${env.COMPOSE_PROJECT_NAME} up -d --remove-orphans"
 """
             }
         }
