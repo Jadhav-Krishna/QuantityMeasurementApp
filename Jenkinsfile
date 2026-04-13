@@ -10,47 +10,42 @@ pipeline {
     }
 
     parameters {
-        booleanParam(name: 'RUN_SONARQUBE',        defaultValue: false, description: 'Run SonarQube analysis')
-        booleanParam(name: 'BUILD_DOCKER_IMAGES',  defaultValue: true,  description: 'Build Docker images')
-        booleanParam(name: 'PUSH_DOCKER_IMAGES',   defaultValue: true,  description: 'Push Docker images to Docker Hub')
-        booleanParam(name: 'DEPLOY_TO_EC2',        defaultValue: false, description: 'SSH into EC2 and redeploy all services')
+        booleanParam(name: 'RUN_SONARQUBE', defaultValue: false, description: 'Run SonarQube analysis')
+        booleanParam(name: 'BUILD_DOCKER_IMAGES', defaultValue: true, description: 'Build Docker images')
+        booleanParam(name: 'PUSH_DOCKER_IMAGES', defaultValue: true, description: 'Push Docker images to Docker Hub')
+        booleanParam(name: 'DEPLOY_TO_EC2', defaultValue: false, description: 'SSH into EC2 and redeploy all services')
     }
 
     environment {
-        MAVEN_CMD              = 'mvn -B -ntp'
+        MAVEN_CMD = 'mvn -B -ntp'
         DOCKERHUB_CREDENTIALS_ID = 'dockerhub-credentials'
-        DOCKERHUB_USERNAME     = 'asynchronouskrishna'
-        DOCKERHUB_REPOSITORY   = 'quantitymeasurementapp'
-        SONARQUBE_SERVER       = 'sonarqube-server'
-        EMAIL_RECIPIENTS       = 'kj4241808@gmail.com'
-        BACKEND_SERVICES       = 'eureka-server admin-server measurement-service user-service email-service payment-service api-gateway'
-        IMAGE_TAG              = "${BUILD_NUMBER}"
-        COMPOSE_PROJECT_NAME   = 'quantity-measurement'
-        // Jenkins credential IDs — create these in Jenkins > Credentials
-        EC2_SSH_CREDENTIALS_ID = 'ec2-ssh-key'       // SSH private key credential
-        EC2_HOST               = credentials('ec2-host')  // Secret text: your EC2 public IP/hostname
-        EC2_USER               = 'ubuntu'             // Change to 'ec2-user' for Amazon Linux
-        FRONTEND_REPO_URL      = 'https://github.com/asynchronouskrishna/QuantityMeasurementApp-Frontend.git'
-        FRONTEND_REPO_DIR      = 'QuantityMeasurementApp-Frontend'
+        DOCKERHUB_USERNAME = 'asynchronouskrishna'
+        DOCKERHUB_REPOSITORY = 'quantitymeasurementapp'
+        SONARQUBE_SERVER = 'sonarqube-server'
+        EMAIL_RECIPIENTS = 'kj4241808@gmail.com'
+        BACKEND_SERVICES = 'eureka-server admin-server measurement-service user-service email-service payment-service api-gateway'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        COMPOSE_PROJECT_NAME = 'quantity-measurement'
+        // Jenkins credential IDs - create these in Jenkins > Credentials.
+        EC2_SSH_CREDENTIALS_ID = 'ec2-ssh-key'
+        EC2_HOST = credentials('ec2-host')
+        EC2_USER = 'ubuntu'
+        FRONTEND_REPO_URL = 'https://github.com/asynchronouskrishna/QuantityMeasurementApp-Frontend.git'
+        FRONTEND_REPO_DIR = 'QuantityMeasurementApp-Frontend'
     }
 
     stages {
-
-        // ── 1. Checkout both repos ────────────────────────────────────────────
         stage('Checkout') {
             options { retry(2) }
             steps {
                 cleanWs()
-                // Backend repo — uses the SCM config from the Jenkins job
                 checkout scm
-                // Frontend repo — cloned into a sub-folder alongside the backend
                 dir("${FRONTEND_REPO_DIR}") {
-                    git url: "${FRONTEND_REPO_URL}", branch: 'main', credentialsId: ''
+                    git url: "${FRONTEND_REPO_URL}", branch: 'main'
                 }
             }
         }
 
-        // ── 2. Validate tools ─────────────────────────────────────────────────
         stage('Validate Tooling') {
             steps {
                 bat 'java -version'
@@ -60,7 +55,6 @@ pipeline {
             }
         }
 
-        // ── 3. Backend tests ──────────────────────────────────────────────────
         stage('Test') {
             options { retry(2) }
             steps {
@@ -73,7 +67,6 @@ pipeline {
             }
         }
 
-        // ── 4. Backend package ────────────────────────────────────────────────
         stage('Build') {
             options { retry(2) }
             steps {
@@ -86,9 +79,8 @@ pipeline {
             }
         }
 
-        // ── 5. SonarQube (optional) ───────────────────────────────────────────
         stage('SonarQube') {
-            when { expression { return params.RUN_SONARQUBE } }
+            when { expression { params.RUN_SONARQUBE } }
             steps {
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
                     bat "${MAVEN_CMD} sonar:sonar"
@@ -96,15 +88,13 @@ pipeline {
             }
         }
 
-        // ── 6. Docker Build ───────────────────────────────────────────────────
         stage('Docker Build') {
             when {
-                expression { return params.BUILD_DOCKER_IMAGES || params.PUSH_DOCKER_IMAGES || params.DEPLOY_TO_EC2 }
+                expression { params.BUILD_DOCKER_IMAGES || params.PUSH_DOCKER_IMAGES || params.DEPLOY_TO_EC2 }
             }
             options { retry(2) }
             steps {
                 script {
-                    // Build all backend images
                     env.BACKEND_SERVICES.tokenize(' ').each { service ->
                         bat """
                             docker build -f ${service}\\Dockerfile ^
@@ -112,7 +102,7 @@ pipeline {
                               -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest .
                         """.stripIndent().trim()
                     }
-                    // Build frontend image from its own repo folder
+
                     bat """
                         docker build ^
                           --build-arg VITE_API_BASE_URL="" ^
@@ -125,10 +115,9 @@ pipeline {
             }
         }
 
-        // ── 7. Docker Login ───────────────────────────────────────────────────
         stage('Docker Login') {
             when {
-                expression { return params.PUSH_DOCKER_IMAGES || params.DEPLOY_TO_EC2 }
+                expression { params.PUSH_DOCKER_IMAGES || params.DEPLOY_TO_EC2 }
             }
             steps {
                 withCredentials([usernamePassword(
@@ -141,9 +130,10 @@ pipeline {
             }
         }
 
-        // ── 8. Docker Push ────────────────────────────────────────────────────
         stage('Docker Push') {
-            when { expression { return params.PUSH_DOCKER_IMAGES } }
+            when {
+                expression { params.PUSH_DOCKER_IMAGES || params.DEPLOY_TO_EC2 }
+            }
             options { retry(2) }
             steps {
                 script {
@@ -157,13 +147,10 @@ pipeline {
             }
         }
 
-        // ── 9. Deploy to EC2 via SSH ──────────────────────────────────────────
         stage('Deploy to EC2') {
-            when { expression { return params.DEPLOY_TO_EC2 } }
+            when { expression { params.DEPLOY_TO_EC2 } }
             steps {
-                // Requires the "SSH Agent" Jenkins plugin and an SSH key credential
                 sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
-                    // Copy the docker-compose.yml to EC2, then pull & restart all services
                     bat """
 @echo off
 scp -o StrictHostKeyChecking=no docker-compose.yml %EC2_USER%@%EC2_HOST%:~/app/docker-compose.yml
@@ -210,10 +197,8 @@ Check the Jenkins console log for the failed stage.
             )
         }
         always {
-            node('built-in') {
-                bat '@echo off\ndocker logout >nul 2>&1\nexit /b 0'
-                cleanWs(deleteDirs: true, notFailBuild: true)
-            }
+            bat '@echo off\ndocker logout >nul 2>&1\nexit /b 0'
+            cleanWs(deleteDirs: true, notFailBuild: true)
         }
     }
 }
