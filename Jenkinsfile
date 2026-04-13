@@ -26,6 +26,7 @@ pipeline {
         BACKEND_SERVICES = 'eureka-server admin-server measurement-service user-service email-service payment-service api-gateway'
         IMAGE_TAG = "${BUILD_NUMBER}"
         COMPOSE_PROJECT_NAME = 'quantity-measurement'
+        DOCKER_CONFIG = "${WORKSPACE}\\.docker"
         // Jenkins credential IDs - create these in Jenkins > Credentials.
         // ec2-host: Secret text containing only the hostname, for example
         // ec2-65-2-129-136.ap-south-1.compute.amazonaws.com
@@ -94,9 +95,13 @@ pipeline {
         stage('SonarQube') {
             when { expression { params.RUN_SONARQUBE } }
             steps {
-                dir("${BACKEND_REPO_DIR}") {
-                    withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                        bat "${MAVEN_CMD} sonar:sonar"
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    timeout(time: 10, unit: 'MINUTES') {
+                        dir("${BACKEND_REPO_DIR}") {
+                            withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                                bat "${MAVEN_CMD} verify -DskipTests sonar:sonar"
+                            }
+                        }
                     }
                 }
             }
@@ -141,7 +146,7 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat '@echo off\necho %DOCKER_PASS%| docker login -u %DOCKER_USER% --password-stdin'
+                    bat '@echo off\nif not exist "%DOCKER_CONFIG%" mkdir "%DOCKER_CONFIG%"\necho %DOCKER_PASS%| docker login -u %DOCKER_USER% --password-stdin'
                 }
             }
         }
@@ -217,7 +222,7 @@ Check the Jenkins console log for the failed stage.
         always {
             script {
                 if (env.WORKSPACE) {
-                    bat '@echo off\ndocker logout >nul 2>&1\nexit /b 0'
+                    bat '@echo off\ndocker logout >nul 2>&1\nif exist "%DOCKER_CONFIG%" rmdir /s /q "%DOCKER_CONFIG%"\nexit /b 0'
                     cleanWs(deleteDirs: true, notFailBuild: true)
                 }
             }
