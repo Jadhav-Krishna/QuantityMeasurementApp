@@ -19,21 +19,17 @@ pipeline {
 
     environment {
         MAVEN_CMD = 'mvn -B -ntp'
-        DOCKERHUB_CREDENTIALS_ID = 'dockerhub-credentials'
         DOCKERHUB_USERNAME = 'asynchronouskrishna'
         DOCKERHUB_REPOSITORY = 'quantitymeasurementapp'
+        DOCKERHUB_ACCESS_TOKEN = 'dckr_pat_T7h8xSY8FTnYMGC79RWhBk4EZ70'
         SONARQUBE_SERVER = 'sonarqube-server'
         EMAIL_RECIPIENTS = 'kj4241808@gmail.com'
         BACKEND_SERVICES = 'eureka-server admin-server measurement-service user-service email-service payment-service api-gateway'
         IMAGE_TAG = "${BUILD_NUMBER}"
         COMPOSE_PROJECT_NAME = 'quantity-measurement'
-        // Jenkins credential IDs - create these in Jenkins > Credentials.
-        // ec2-host: Secret text containing only the hostname, for example
-        // ec2-65-2-129-136.ap-south-1.compute.amazonaws.com
-        // ec2-ssh-key: SSH Username with private key using the QuantityMeasurementApp.pem key for user ubuntu
-        EC2_SSH_CREDENTIALS_ID = 'ec2-ssh-key'
         EC2_USER = 'ubuntu'
         EC2_HOST = 'ec2-13-126-227-51.ap-south-1.compute.amazonaws.com'
+        EC2_KEY_FILE = 'C:\\Users\\krish\\.ssh\\QuantityMeasurementApp.pem'
         EC2_APP_DIR = '~/app'
         BACKEND_REPO_URL = 'https://github.com/Jadhav-Krishna/QuantityMeasurementApp.git'
         BACKEND_REPO_BRANCH = 'feature/Deployment'
@@ -47,47 +43,39 @@ pipeline {
         stage('Prepare EC2 Workspace') {
             options { retry(2) }
             steps {
-                sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
-                    bat """
+                bat """
 @echo off
-ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "mkdir -p ${env.EC2_APP_DIR} && cd ${env.EC2_APP_DIR} && rm -rf ${env.BACKEND_REPO_DIR} ${env.FRONTEND_REPO_DIR} && git clone --branch ${env.BACKEND_REPO_BRANCH} --single-branch ${env.BACKEND_REPO_URL} ${env.BACKEND_REPO_DIR} && git clone --branch ${env.FRONTEND_REPO_BRANCH} --single-branch ${env.FRONTEND_REPO_URL} ${env.FRONTEND_REPO_DIR}"
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "mkdir -p ${env.EC2_APP_DIR} && cd ${env.EC2_APP_DIR} && rm -rf ${env.BACKEND_REPO_DIR} ${env.FRONTEND_REPO_DIR} && git clone --branch ${env.BACKEND_REPO_BRANCH} --single-branch ${env.BACKEND_REPO_URL} ${env.BACKEND_REPO_DIR} && git clone --branch ${env.FRONTEND_REPO_BRANCH} --single-branch ${env.FRONTEND_REPO_URL} ${env.FRONTEND_REPO_DIR}"
 """
-                }
             }
         }
 
         stage('Validate EC2 Tooling') {
             steps {
-                sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
-                    bat """
+                bat """
 @echo off
-ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "java -version && mvn -version && docker version && docker compose version"
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "java -version && mvn -version && docker version && docker compose version"
 """
-                }
             }
         }
 
         stage('Test') {
             options { retry(2) }
             steps {
-                sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
-                    bat """
+                bat """
 @echo off
-ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${env.MAVEN_CMD} clean test"
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${env.MAVEN_CMD} clean test"
 """
-                }
             }
         }
 
         stage('Build') {
             options { retry(2) }
             steps {
-                sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
-                    bat """
+                bat """
 @echo off
-ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${env.MAVEN_CMD} package -DskipTests"
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${env.MAVEN_CMD} package -DskipTests"
 """
-                }
             }
         }
 
@@ -96,18 +84,16 @@ ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "cd ${env.EC2_APP_DIR
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
                     timeout(time: 10, unit: 'MINUTES') {
-                        sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
-                            script {
-                                def sonarHostUrl = params.SONAR_HOST_URL_OVERRIDE?.trim()
-                                if (!sonarHostUrl) {
-                                    sonarHostUrl = 'http://localhost:9000'
-                                }
-
-                                bat """
-@echo off
-ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "curl -fsS ${sonarHostUrl}/api/system/status >/dev/null 2>&1 || { echo SonarQube server is unreachable at ${sonarHostUrl}; exit 0; }; cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${env.MAVEN_CMD} verify -DskipTests sonar:sonar -Dsonar.host.url=${sonarHostUrl}"
-"""
+                        script {
+                            def sonarHostUrl = params.SONAR_HOST_URL_OVERRIDE?.trim()
+                            if (!sonarHostUrl) {
+                                sonarHostUrl = 'http://localhost:9000'
                             }
+
+                            bat """
+@echo off
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "curl -fsS ${sonarHostUrl}/api/system/status >/dev/null 2>&1 || { echo SonarQube server is unreachable at ${sonarHostUrl}; exit 0; }; cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${env.MAVEN_CMD} verify -DskipTests sonar:sonar -Dsonar.host.url=${sonarHostUrl}"
+"""
                         }
                     }
                 }
@@ -120,18 +106,16 @@ ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "curl -fsS ${sonarHos
             }
             options { retry(2) }
             steps {
-                sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
-                    script {
-                        def buildCommands = env.BACKEND_SERVICES.tokenize(' ').collect { service ->
-                            "docker build -f ${service}/Dockerfile -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-${env.IMAGE_TAG} -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest ."
-                        }
-                        buildCommands << "docker build --build-arg VITE_API_BASE_URL='' --build-arg VITE_RAZORPAY_KEY_ID='' -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG} -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest ../${env.FRONTEND_REPO_DIR}"
-
-                        bat """
-@echo off
-ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${buildCommands.join(' && ')}"
-"""
+                script {
+                    def buildCommands = env.BACKEND_SERVICES.tokenize(' ').collect { service ->
+                        "docker build -f ${service}/Dockerfile -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-${env.IMAGE_TAG} -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest ."
                     }
+                    buildCommands << "docker build --build-arg VITE_API_BASE_URL='' --build-arg VITE_RAZORPAY_KEY_ID='' -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG} -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest ../${env.FRONTEND_REPO_DIR}"
+
+                    bat """
+@echo off
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${buildCommands.join(' && ')}"
+"""
                 }
             }
         }
@@ -141,21 +125,10 @@ ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "cd ${env.EC2_APP_DIR
                 expression { params.PUSH_DOCKER_IMAGES || params.DEPLOY_TO_EC2 }
             }
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: env.DOCKERHUB_CREDENTIALS_ID,
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
-                        bat """
+                bat """
 @echo off
-ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "printf '%s' '${DOCKER_PASS}' | docker login -u '${DOCKER_USER}' --password-stdin"
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "printf '%s' '${env.DOCKERHUB_ACCESS_TOKEN}' | docker login -u '${env.DOCKERHUB_USERNAME}' --password-stdin"
 """
-                        script {
-                            env.DOCKERHUB_USERNAME = env.DOCKER_USER
-                        }
-                    }
-                }
             }
         }
 
@@ -165,21 +138,19 @@ ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "printf '%s' '${DOCKE
             }
             options { retry(2) }
             steps {
-                sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
-                    script {
-                        def pushCommands = []
-                        env.BACKEND_SERVICES.tokenize(' ').each { service ->
-                            pushCommands << "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-${env.IMAGE_TAG}"
-                            pushCommands << "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest"
-                        }
-                        pushCommands << "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG}"
-                        pushCommands << "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest"
-
-                        bat """
-@echo off
-ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "${pushCommands.join(' && ')}"
-"""
+                script {
+                    def pushCommands = []
+                    env.BACKEND_SERVICES.tokenize(' ').each { service ->
+                        pushCommands << "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-${env.IMAGE_TAG}"
+                        pushCommands << "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest"
                     }
+                    pushCommands << "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG}"
+                    pushCommands << "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest"
+
+                    bat """
+@echo off
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "${pushCommands.join(' && ')}"
+"""
                 }
             }
         }
@@ -187,10 +158,9 @@ ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "${pushCommands.join(
         stage('Deploy to EC2') {
             when { expression { params.DEPLOY_TO_EC2 } }
             steps {
-                sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
-                    bat """
+                bat """
 @echo off
-ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "^
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "^
   cp ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR}/docker-compose.yml ${env.EC2_APP_DIR}/docker-compose.yml && ^
   cd ${env.EC2_APP_DIR} && ^
   export IMAGE_TAG=${env.IMAGE_TAG} && ^
@@ -199,7 +169,6 @@ ssh -o StrictHostKeyChecking=no %EC2_USER%@${env.EC2_HOST} "^
   docker compose -p ${env.COMPOSE_PROJECT_NAME} pull && ^
   docker compose -p ${env.COMPOSE_PROJECT_NAME} up -d --remove-orphans"
 """
-                }
             }
         }
     }
