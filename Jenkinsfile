@@ -27,8 +27,10 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
         COMPOSE_PROJECT_NAME = 'quantity-measurement'
         // Jenkins credential IDs - create these in Jenkins > Credentials.
+        // ec2-host: Secret text containing only the hostname, for example
+        // ec2-65-2-129-136.ap-south-1.compute.amazonaws.com
+        // ec2-ssh-key: SSH Username with private key using the QuantityMeasurementApp.pem key for user ubuntu
         EC2_SSH_CREDENTIALS_ID = 'ec2-ssh-key'
-        EC2_HOST = credentials('ec2-host')
         EC2_USER = 'ubuntu'
         FRONTEND_REPO_URL = 'https://github.com/asynchronouskrishna/QuantityMeasurementApp-Frontend.git'
         FRONTEND_REPO_DIR = 'QuantityMeasurementApp-Frontend'
@@ -150,8 +152,9 @@ pipeline {
         stage('Deploy to EC2') {
             when { expression { params.DEPLOY_TO_EC2 } }
             steps {
-                sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
-                    bat """
+                withCredentials([string(credentialsId: 'ec2-host', variable: 'EC2_HOST')]) {
+                    sshagent(credentials: ["${EC2_SSH_CREDENTIALS_ID}"]) {
+                        bat """
 @echo off
 scp -o StrictHostKeyChecking=no docker-compose.yml %EC2_USER%@%EC2_HOST%:~/app/docker-compose.yml
 ssh -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "^
@@ -162,6 +165,7 @@ ssh -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "^
   docker compose -p ${env.COMPOSE_PROJECT_NAME} pull && ^
   docker compose -p ${env.COMPOSE_PROJECT_NAME} up -d --remove-orphans"
 """
+                    }
                 }
             }
         }
@@ -170,7 +174,7 @@ ssh -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "^
     post {
         success {
             emailext(
-                to: "${EMAIL_RECIPIENTS}",
+                to: "${env.EMAIL_RECIPIENTS}",
                 subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """Build completed successfully.
 
@@ -184,7 +188,7 @@ Repository: ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}
         }
         failure {
             emailext(
-                to: "${EMAIL_RECIPIENTS}",
+                to: "${env.EMAIL_RECIPIENTS}",
                 subject: "FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """Build or deployment failed.
 
@@ -197,8 +201,12 @@ Check the Jenkins console log for the failed stage.
             )
         }
         always {
-            bat '@echo off\ndocker logout >nul 2>&1\nexit /b 0'
-            cleanWs(deleteDirs: true, notFailBuild: true)
+            script {
+                if (env.WORKSPACE) {
+                    bat '@echo off\ndocker logout >nul 2>&1\nexit /b 0'
+                    cleanWs(deleteDirs: true, notFailBuild: true)
+                }
+            }
         }
     }
 }
