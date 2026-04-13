@@ -36,7 +36,7 @@ pipeline {
         BACKEND_REPO_BRANCH = 'feature/Deployment'
         BACKEND_REPO_DIR = 'QuantityMeasurementApp'
         FRONTEND_REPO_URL = 'https://github.com/Jadhav-Krishna/QuantityMeasurementApp-Frontend.git'
-        FRONTEND_REPO_BRANCH = 'main'
+        FRONTEND_REPO_BRANCH = 'feature/frontend-react'
         FRONTEND_REPO_DIR = 'QuantityMeasurementApp-Frontend'
     }
 
