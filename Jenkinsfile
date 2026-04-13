@@ -32,7 +32,7 @@ pipeline {
         // ec2-ssh-key: SSH Username with private key using the QuantityMeasurementApp.pem key for user ubuntu
         EC2_SSH_CREDENTIALS_ID = 'ec2-ssh-key'
         EC2_USER = 'ubuntu'
-        FRONTEND_REPO_URL = 'https://github.com/asynchronouskrishna/QuantityMeasurementApp-Frontend.git'
+        FRONTEND_REPO_URL = 'https://github.com/Jadhav-Krishna/QuantityMeasurementApp-Frontend.git'
         FRONTEND_REPO_DIR = 'QuantityMeasurementApp-Frontend'
     }
 
