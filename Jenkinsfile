@@ -113,9 +113,9 @@ ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.E
                     buildCommands << "docker build --build-arg VITE_API_BASE_URL='' --build-arg VITE_RAZORPAY_KEY_ID='' -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG} -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest ../${env.FRONTEND_REPO_DIR}"
 
                     bat """
-@echo off
-ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${buildCommands.join(' && ')}"
-"""
+                        @echo off
+                        ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "cd ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR} && ${buildCommands.join(' && ')}"
+                    """
                 }
             }
         }
@@ -126,9 +126,9 @@ ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.E
             }
             steps {
                 bat """
-@echo off
-ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "printf '%s' '${env.DOCKERHUB_ACCESS_TOKEN}' | docker login -u '${env.DOCKERHUB_USERNAME}' --password-stdin"
-"""
+                    @echo off
+                    ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "printf '%s' '${env.DOCKERHUB_ACCESS_TOKEN}' | docker login -u '${env.DOCKERHUB_USERNAME}' --password-stdin"
+                """
             }
         }
 
@@ -148,9 +148,9 @@ ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.E
                     pushCommands << "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest"
 
                     bat """
-@echo off
-ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "${pushCommands.join(' && ')}"
-"""
+                        @echo off
+                        ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "${pushCommands.join(' && ')}"
+                    """
                 }
             }
         }
