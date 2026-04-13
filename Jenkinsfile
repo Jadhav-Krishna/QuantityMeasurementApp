@@ -32,7 +32,11 @@ pipeline {
         // ec2-ssh-key: SSH Username with private key using the QuantityMeasurementApp.pem key for user ubuntu
         EC2_SSH_CREDENTIALS_ID = 'ec2-ssh-key'
         EC2_USER = 'ubuntu'
+        BACKEND_REPO_URL = 'https://github.com/Jadhav-Krishna/QuantityMeasurementApp.git'
+        BACKEND_REPO_BRANCH = 'feature/Deployment'
+        BACKEND_REPO_DIR = 'QuantityMeasurementApp'
         FRONTEND_REPO_URL = 'https://github.com/Jadhav-Krishna/QuantityMeasurementApp-Frontend.git'
+        FRONTEND_REPO_BRANCH = 'main'
         FRONTEND_REPO_DIR = 'QuantityMeasurementApp-Frontend'
     }
 
@@ -41,9 +45,11 @@ pipeline {
             options { retry(2) }
             steps {
                 cleanWs()
-                checkout scm
+                dir("${BACKEND_REPO_DIR}") {
+                    git url: "${BACKEND_REPO_URL}", branch: "${BACKEND_REPO_BRANCH}"
+                }
                 dir("${FRONTEND_REPO_DIR}") {
-                    git url: "${FRONTEND_REPO_URL}", branch: 'main'
+                    git url: "${FRONTEND_REPO_URL}", branch: "${FRONTEND_REPO_BRANCH}"
                 }
             }
         }
@@ -60,11 +66,13 @@ pipeline {
         stage('Test') {
             options { retry(2) }
             steps {
-                bat "${MAVEN_CMD} clean test"
+                dir("${BACKEND_REPO_DIR}") {
+                    bat "${MAVEN_CMD} clean test"
+                }
             }
             post {
                 always {
-                    junit allowEmptyResults: true, testResults: '**/target/surefire-reports/TEST-*.xml'
+                    junit allowEmptyResults: true, testResults: "${BACKEND_REPO_DIR}/**/target/surefire-reports/TEST-*.xml"
                 }
             }
         }
@@ -72,11 +80,13 @@ pipeline {
         stage('Build') {
             options { retry(2) }
             steps {
-                bat "${MAVEN_CMD} package -DskipTests"
+                dir("${BACKEND_REPO_DIR}") {
+                    bat "${MAVEN_CMD} package -DskipTests"
+                }
             }
             post {
                 success {
-                    archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+                    archiveArtifacts artifacts: "${BACKEND_REPO_DIR}/**/target/*.jar", fingerprint: true
                 }
             }
         }
@@ -84,8 +94,10 @@ pipeline {
         stage('SonarQube') {
             when { expression { params.RUN_SONARQUBE } }
             steps {
-                withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                    bat "${MAVEN_CMD} sonar:sonar"
+                dir("${BACKEND_REPO_DIR}") {
+                    withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                        bat "${MAVEN_CMD} sonar:sonar"
+                    }
                 }
             }
         }
@@ -98,11 +110,13 @@ pipeline {
             steps {
                 script {
                     env.BACKEND_SERVICES.tokenize(' ').each { service ->
-                        bat """
-                            docker build -f ${service}\\Dockerfile ^
-                              -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-${env.IMAGE_TAG} ^
-                              -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest .
-                        """.stripIndent().trim()
+                        dir("${BACKEND_REPO_DIR}") {
+                            bat """
+                                docker build -f ${service}\\Dockerfile ^
+                                  -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-${env.IMAGE_TAG} ^
+                                  -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest .
+                            """.stripIndent().trim()
+                        }
                     }
 
                     bat """
@@ -111,7 +125,7 @@ pipeline {
                           --build-arg VITE_RAZORPAY_KEY_ID="" ^
                           -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG} ^
                           -t ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest ^
-                          ${env.FRONTEND_REPO_DIR}
+                          .\\${env.FRONTEND_REPO_DIR}
                     """.stripIndent().trim()
                 }
             }
