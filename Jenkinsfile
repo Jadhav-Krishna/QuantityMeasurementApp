@@ -14,6 +14,7 @@ pipeline {
         booleanParam(name: 'BUILD_DOCKER_IMAGES', defaultValue: true, description: 'Build Docker images')
         booleanParam(name: 'PUSH_DOCKER_IMAGES', defaultValue: true, description: 'Push Docker images to Docker Hub')
         booleanParam(name: 'DEPLOY_TO_EC2', defaultValue: false, description: 'SSH into EC2 and redeploy all services')
+        string(name: 'SONAR_HOST_URL_OVERRIDE', defaultValue: '', description: 'Optional SonarQube URL override, for example http://<host>:9000')
     }
 
     environment {
@@ -99,7 +100,22 @@ pipeline {
                     timeout(time: 10, unit: 'MINUTES') {
                         dir("${BACKEND_REPO_DIR}") {
                             withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                                bat "${MAVEN_CMD} verify -DskipTests sonar:sonar"
+                                script {
+                                    def sonarHostUrl = params.SONAR_HOST_URL_OVERRIDE?.trim()
+                                    if (!sonarHostUrl) {
+                                        sonarHostUrl = env.SONAR_HOST_URL
+                                    }
+
+                                    bat """
+@echo off
+powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing -Uri '%sonarUrl%/api/system/status' -TimeoutSec 10 | Out-Null; exit 0 } catch { exit 1 }"
+if errorlevel 1 (
+  echo SonarQube server is unreachable at %sonarUrl%
+  exit /b 1
+)
+${env.MAVEN_CMD} verify -DskipTests sonar:sonar -Dsonar.host.url=%sonarUrl%
+""".stripIndent().trim().replace('%sonarUrl%', sonarHostUrl)
+                                }
                             }
                         }
                     }
@@ -146,7 +162,7 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat '@echo off\nif not exist "%DOCKER_CONFIG%" mkdir "%DOCKER_CONFIG%"\necho %DOCKER_PASS%| docker login -u %DOCKER_USER% --password-stdin'
+                    bat '@echo off\nif not exist "%DOCKER_CONFIG%" mkdir "%DOCKER_CONFIG%"\necho %DOCKER_PASS%| docker --config "%DOCKER_CONFIG%" login -u %DOCKER_USER% --password-stdin'
                 }
             }
         }
@@ -159,11 +175,11 @@ pipeline {
             steps {
                 script {
                     env.BACKEND_SERVICES.tokenize(' ').each { service ->
-                        bat "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-${env.IMAGE_TAG}"
-                        bat "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest"
+                        bat "docker --config \"%DOCKER_CONFIG%\" push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-${env.IMAGE_TAG}"
+                        bat "docker --config \"%DOCKER_CONFIG%\" push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:${service}-latest"
                     }
-                    bat "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG}"
-                    bat "docker push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest"
+                    bat "docker --config \"%DOCKER_CONFIG%\" push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-${env.IMAGE_TAG}"
+                    bat "docker --config \"%DOCKER_CONFIG%\" push ${env.DOCKERHUB_USERNAME}/${env.DOCKERHUB_REPOSITORY}:frontend-latest"
                 }
             }
         }
@@ -222,7 +238,7 @@ Check the Jenkins console log for the failed stage.
         always {
             script {
                 if (env.WORKSPACE) {
-                    bat '@echo off\ndocker logout >nul 2>&1\nif exist "%DOCKER_CONFIG%" rmdir /s /q "%DOCKER_CONFIG%"\nexit /b 0'
+                    bat '@echo off\ndocker --config "%DOCKER_CONFIG%" logout >nul 2>&1\nif exist "%DOCKER_CONFIG%" rmdir /s /q "%DOCKER_CONFIG%"\nexit /b 0'
                     cleanWs(deleteDirs: true, notFailBuild: true)
                 }
             }
