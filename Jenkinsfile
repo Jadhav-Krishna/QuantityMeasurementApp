@@ -55,7 +55,7 @@ ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.E
             steps {
                 bat """
 @echo off
-ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "sudo apt-get update && sudo apt-get install -y openjdk-21-jdk maven git curl ca-certificates && sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && sudo systemctl enable docker && sudo systemctl start docker && sudo usermod -aG docker ${env.EC2_USER}"
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "sudo apt-get update && sudo apt-get install -y openjdk-21-jdk maven git curl ca-certificates psmisc && sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && sudo systemctl enable docker && sudo systemctl start docker && sudo usermod -aG docker ${env.EC2_USER}"
 """
             }
         }
@@ -170,7 +170,7 @@ ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.E
             steps {
                 bat """
 @echo off
-ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "cp ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR}/docker-compose.yml ${env.EC2_APP_DIR}/docker-compose.yml && cd ${env.EC2_APP_DIR} && export IMAGE_TAG=${env.IMAGE_TAG} && export DOCKERHUB_USERNAME=${env.DOCKERHUB_USERNAME} && export DOCKERHUB_REPOSITORY=${env.DOCKERHUB_REPOSITORY} && docker compose -p ${env.COMPOSE_PROJECT_NAME} down --remove-orphans || true && docker compose -p ${env.COMPOSE_PROJECT_NAME} pull && docker compose -p ${env.COMPOSE_PROJECT_NAME} up -d --remove-orphans"
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "cp ${env.EC2_APP_DIR}/${env.BACKEND_REPO_DIR}/docker-compose.yml ${env.EC2_APP_DIR}/docker-compose.yml && cd ${env.EC2_APP_DIR} && export IMAGE_TAG=${env.IMAGE_TAG} && export DOCKERHUB_USERNAME=${env.DOCKERHUB_USERNAME} && export DOCKERHUB_REPOSITORY=${env.DOCKERHUB_REPOSITORY} && docker compose -p ${env.COMPOSE_PROJECT_NAME} down --remove-orphans || true && sudo fuser -k 80/tcp 8080/tcp 8081/tcp 8082/tcp 8083/tcp 8084/tcp 8761/tcp 9000/tcp 9090/tcp || true && docker ps -aq --filter publish=80 --filter publish=8080 --filter publish=8081 --filter publish=8082 --filter publish=8083 --filter publish=8084 --filter publish=8761 --filter publish=9000 --filter publish=9090 | xargs -r docker rm -f && docker compose -p ${env.COMPOSE_PROJECT_NAME} pull && docker compose -p ${env.COMPOSE_PROJECT_NAME} up -d --remove-orphans"
 """
             }
         }
