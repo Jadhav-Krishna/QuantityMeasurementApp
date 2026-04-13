@@ -55,7 +55,7 @@ ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.E
             steps {
                 bat """
 @echo off
-ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "sudo apt-get update && sudo apt-get install -y openjdk-21-jdk maven docker.io docker-compose-v2 git curl && sudo systemctl enable docker && sudo systemctl start docker && sudo usermod -aG docker ${env.EC2_USER}"
+ssh -i "${env.EC2_KEY_FILE}" -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} "sudo apt-get update && sudo apt-get install -y openjdk-21-jdk maven git curl ca-certificates && sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && sudo systemctl enable docker && sudo systemctl start docker && sudo usermod -aG docker ${env.EC2_USER}"
 """
             }
         }
