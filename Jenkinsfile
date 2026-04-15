@@ -28,8 +28,8 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
         COMPOSE_PROJECT_NAME = 'quantity-measurement'
         EC2_USER = 'ubuntu'
-        EC2_HOST = 'ec2-13-126-227-51.ap-south-1.compute.amazonaws.com'
-        EC2_KEY_FILE = 'C:\\Users\\krish\\.ssh\\QuantityMeasurementApp.pem'
+        EC2_HOST = 'ec2-44-201-24-212.compute-1.amazonaws.com'
+        EC2_KEY_FILE = 'C:\\Users\\krish\\.ssh\\quantity-measurement-app.pem'
         EC2_APP_DIR = '~/app'
         BACKEND_REPO_URL = 'https://github.com/Jadhav-Krishna/QuantityMeasurementApp.git'
         BACKEND_REPO_BRANCH = 'feature/Deployment'

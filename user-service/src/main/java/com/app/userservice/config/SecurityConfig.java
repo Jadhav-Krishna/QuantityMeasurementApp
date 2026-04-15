@@ -28,7 +28,7 @@ public class SecurityConfig {
     private final CustomOidcUserService customOidcUserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
     private final CookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
-    private final AppProperties appProperties;
+    private final FrontendRedirectResolver frontendRedirectResolver;
 
     public SecurityConfig(
         JwtAuthenticationFilter jwtAuthenticationFilter,
@@ -37,7 +37,7 @@ public class SecurityConfig {
         CustomOidcUserService customOidcUserService,
         OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
         CookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository,
-        AppProperties appProperties
+        FrontendRedirectResolver frontendRedirectResolver
     ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.authenticationProvider = authenticationProvider;
@@ -45,14 +45,11 @@ public class SecurityConfig {
         this.customOidcUserService = customOidcUserService;
         this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
         this.cookieAuthorizationRequestRepository = cookieAuthorizationRequestRepository;
-        this.appProperties = appProperties;
+        this.frontendRedirectResolver = frontendRedirectResolver;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // Failure redirects to the frontend /auth page directly
-        String failureRedirect = appProperties.getOauth2().getRedirectUri() + "?error=oauth2";
-
         http
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
@@ -79,7 +76,7 @@ public class SecurityConfig {
                 )
                 .successHandler(oAuth2AuthenticationSuccessHandler)
                 .failureHandler((request, response, exception) -> {
-                    response.sendRedirect(failureRedirect);
+                    response.sendRedirect(frontendRedirectResolver.resolveAuthPageUri(request) + "?error=oauth2");
                 })
             )
             .logout(logout -> logout

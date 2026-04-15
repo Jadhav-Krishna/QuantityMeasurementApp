@@ -65,7 +65,7 @@ management:
 
 app:
   oauth2:
-    redirect-uri: ${APP_REDIRECT_URI:http://localhost:3000/auth}
+    redirect-uri: ${APP_REDIRECT_URI:}
   jwt:
     secret: ${APP_JWT_SECRET:}
     expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}

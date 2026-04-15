@@ -1,6 +1,6 @@
 package com.app.userservice.security;
 
-import com.app.userservice.config.AppProperties;
+import com.app.userservice.config.FrontendRedirectResolver;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,11 +19,11 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
     private static final Logger logger = LoggerFactory.getLogger(OAuth2AuthenticationSuccessHandler.class);
 
-    private final AppProperties appProperties;
+    private final FrontendRedirectResolver frontendRedirectResolver;
     private final JwtService jwtService;
 
-    public OAuth2AuthenticationSuccessHandler(AppProperties appProperties, JwtService jwtService) {
-        this.appProperties = appProperties;
+    public OAuth2AuthenticationSuccessHandler(FrontendRedirectResolver frontendRedirectResolver, JwtService jwtService) {
+        this.frontendRedirectResolver = frontendRedirectResolver;
         this.jwtService = jwtService;
     }
 
@@ -36,7 +36,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
 
             String redirectUri = UriComponentsBuilder
-                    .fromUriString(appProperties.getOauth2().getRedirectUri())
+                    .fromUriString(frontendRedirectResolver.resolveAuthPageUri(request))
                     .queryParam("token", token)
                     .queryParam("provider", customUser.getUser().getAuthProvider())
                     .build()
