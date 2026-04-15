@@ -8,12 +8,14 @@ import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Configuration
 public class CorsConfig {
 
-    @Value("${app.cors.allowed-origins:http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:8080,http://127.0.0.1:8080}")
+    @Value("${app.cors.allowed-origins:http://localhost,http://127.0.0.1,http://localhost:*,http://127.0.0.1:*,https://localhost,https://127.0.0.1,https://localhost:*,https://127.0.0.1:*}")
     private String allowedOrigins;
 
     @Bean
@@ -21,15 +23,21 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(origin -> !origin.isEmpty())
-                .toList());
+        config.setAllowedOriginPatterns(parseAllowedOrigins());
         config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setMaxAge(3600L);
         config.setExposedHeaders(List.of("Authorization", "Content-Type", "X-Guest-Uses-Remaining"));
         source.registerCorsConfiguration("/**", config);
         return new CorsWebFilter(source);
+    }
+
+    private List<String> parseAllowedOrigins() {
+        Set<String> origins = new LinkedHashSet<>();
+        Arrays.stream(allowedOrigins.split(","))
+            .map(String::trim)
+            .filter(origin -> !origin.isEmpty())
+            .forEach(origins::add);
+        return List.copyOf(origins);
     }
 }
